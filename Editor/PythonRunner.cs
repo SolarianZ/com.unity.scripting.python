@@ -206,6 +206,7 @@ namespace UnityEditor.Scripting.Python
             }
         }
 
+        /* 内部已有确保初始化逻辑，这里只会拖慢编译代码后的Reload流程
         /// <summary>
         /// Initialize automatically when a new domain has started.
         ///
@@ -218,6 +219,7 @@ namespace UnityEditor.Scripting.Python
         {
             EditorApplication.delayCall += EnsureInitialized;
         }
+        */
 
         // To keep the thread state so we can restore it on domain unloads
         static IntPtr s_threadState = IntPtr.Zero;
@@ -298,6 +300,9 @@ namespace UnityEditor.Scripting.Python
             }
             try
             {
+                if (!Application.isBatchMode)
+                    EditorUtility.DisplayProgressBar("Python Scripting", "Initializing Python...", 0.5f);
+
                 s_IsInitialized = true;
                 DoEnsureInitialized();
             }
@@ -305,6 +310,11 @@ namespace UnityEditor.Scripting.Python
             {
                 s_IsInitialized = false;
                 throw;
+            }
+            finally
+            {
+                if (!Application.isBatchMode)
+                    EditorUtility.ClearProgressBar();
             }
         }
 
