@@ -1,8 +1,8 @@
 {
   "name": "com.unity.scripting.python",
   "displayName": "Python Scripting",
-  "version": "7.0.2",
-  "unity": "2020.3",
+  "version": "7.0.3",
+  "unity": "2019.4",
   "description": "Optimize Unity Editor workflows for your VFX/animation pipelines using Python scripting:\n- Automate repetitive tasks to speed up your artistic process.\n- Integrate your custom pipeline tools within Unity.\n- Increase interoperability with other software of your pipeline.\nThis package includes and uses Python 3.10.6 and Python for .NET 3.0.0.0 and is Editor-only (not available in runtime builds).",
   "keywords": [
     "python",
