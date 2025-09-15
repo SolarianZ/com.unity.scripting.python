@@ -4,6 +4,14 @@ All notable changes to this package will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [7.0.3] - 2025-09-15
+### Changed
+* Delay the call to the initialization method until first use to speed up reloads.
+* The minimum supported Unity version has been lowered to 2019.4.
+
+### Added
+* Added the *Tools/Python Scripting/Re-Generate Stubs* menu item for generating Python type stubs.
+
 ## [7.0.2] - 2024-10-03
 ### Changed
 * Prepared the package for end of support as of Unity 6.1.
