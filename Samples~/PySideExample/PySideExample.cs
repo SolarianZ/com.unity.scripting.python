@@ -58,11 +58,7 @@ namespace UnityEditor.Scripting.Python.Samples
 
             // Now that we've set up the path correctly, we can import the
             // Python side of this example as a module:
-            PythonRunner.RunString(@"
-                    import PySideExample
-
-                    PySideExample.create_or_reinitialize()
-                    ");
+            PythonRunner.RunString("import PySideExample\nPySideExample.create_or_reinitialize()");
 
             // We can't register events in Python directly, so register them
             // here in C#:
@@ -103,10 +99,7 @@ namespace UnityEditor.Scripting.Python.Samples
         static void OnHierarchyChanged()
         {
             // This is the simplest way to call Python code.
-            PythonRunner.RunString(@"
-                    import PySideExample
-                    PySideExample.update_camera_list()
-                    ");
+            PythonRunner.RunString("import PySideExample\nPySideExample.update_camera_list()");
         }
 
         static void OnUpdate()
