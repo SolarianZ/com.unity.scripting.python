@@ -74,15 +74,6 @@ namespace UnityEditor.Scripting.Python
         };
 
 
-        [MenuItem("Tools/Python Scripting/Open Stubs Directory")]
-        public static void OpenStubsDirectory()
-        {
-            if (Directory.Exists(OutputDirectory))
-                EditorUtility.OpenWithDefaultApp(OutputDirectory);
-            else
-                EditorUtility.DisplayDialog("Notice", "Stubs directory does not exist.", "OK");
-        }
-
         [MenuItem("Tools/Python Scripting/Re-Generate Stubs")]
         public static void GenerateStubs()
         {
@@ -122,6 +113,15 @@ namespace UnityEditor.Scripting.Python
             {
                 EditorUtility.ClearProgressBar();
             }
+        }
+
+        [MenuItem("Tools/Python Scripting/Open Stubs Directory")]
+        public static void OpenStubsDirectory()
+        {
+            if (Directory.Exists(OutputDirectory))
+                EditorUtility.OpenWithDefaultApp(OutputDirectory);
+            else
+                EditorUtility.DisplayDialog("Notice", "Stubs directory does not exist.", "OK");
         }
 
         private static HashSet<Assembly> GetTargetAssemblies()
@@ -291,10 +291,20 @@ namespace UnityEditor.Scripting.Python
 
             // 构造函数
             ConstructorInfo[] constructors = type.GetConstructors(BindingFlags.Public | BindingFlags.Instance);
-            foreach (ConstructorInfo ctor in constructors)
+            hasMembers = constructors.Length > 0;
+            if (constructors.Length == 1)
             {
-                GenerateConstructorStub(ctor, sb, indent + 1);
-                hasMembers = true;
+                sb.AppendLine($"{indentStr}    # Constructors");
+                GenerateConstructorStub(constructors[0], sb, indent + 1);
+            }
+            else if (constructors.Length > 1)
+            {
+                sb.AppendLine($"{indentStr}    # Constructors");
+                foreach (ConstructorInfo ctor in constructors)
+                {
+                    sb.AppendLine($"{indentStr}    @overload");
+                    GenerateConstructorStub(ctor, sb, indent + 1);
+                }
             }
 
             // 获取所有公共成员，包括继承的成员，因为生成类型存根时没有生成继承关系，无法体现继承的成员
@@ -303,6 +313,8 @@ namespace UnityEditor.Scripting.Python
 
             // 属性
             PropertyInfo[] properties = type.GetProperties(flattenHierarchyPublicMemberFlags);
+            if (properties.Length != 0)
+                sb.AppendLine($"{indentStr}    # Properties");
             foreach (PropertyInfo prop in properties)
             {
                 if (ShouldSkipMember(prop))
@@ -314,6 +326,8 @@ namespace UnityEditor.Scripting.Python
 
             // 字段
             FieldInfo[] fields = type.GetFields(flattenHierarchyPublicMemberFlags);
+            if (fields.Length != 0)
+                sb.AppendLine($"{indentStr}    # Fields");
             foreach (FieldInfo field in fields)
             {
                 if (field.IsSpecialName || field.IsLiteral)
@@ -328,6 +342,8 @@ namespace UnityEditor.Scripting.Python
 
             // 方法（按名字分组以处理重载）
             MethodInfo[] methods = type.GetMethods(flattenHierarchyPublicMemberFlags);
+            if (methods.Length != 0)
+                sb.AppendLine($"{indentStr}    # Methods");
             IEnumerable<IGrouping<string, MethodInfo>> methodGroups = methods
                 .GroupBy(m => m.Name);
             List<MethodInfo> tempMethodList = new List<MethodInfo>();
@@ -363,6 +379,8 @@ namespace UnityEditor.Scripting.Python
 
             // 嵌套类型
             Type[] nestedTypes = type.GetNestedTypes(BindingFlags.Public);
+            if (nestedTypes.Length != 0)
+                sb.AppendLine($"{indentStr}    # Nested Types");
             foreach (Type nestedType in nestedTypes)
             {
                 sb.AppendLine();
@@ -477,6 +495,18 @@ namespace UnityEditor.Scripting.Python
             {
                 string paramType = GetPythonType(p.ParameterType);
                 string paramName = GetSafePythonParamName(p.Name);
+
+                // 处理可变参数
+                if (p.IsDefined(typeof(ParamArrayAttribute), false))
+                {
+                    // 可变参数在Python中使用*args
+                    Type elementType = p.ParameterType.GetElementType();
+                    if (elementType != null)
+                    {
+                        string elementTypeName = GetPythonType(elementType);
+                        return $"*{paramName}: {elementTypeName}";
+                    }
+                }
 
                 // 处理ref/out参数
                 if (p.IsOut)
