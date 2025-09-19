@@ -136,7 +136,7 @@ namespace UnityEditor.Scripting.Python
                 typeof(UObject).Assembly, // UnityEngine.CoreModule.dll
                 typeof(Animation).Assembly, // UnityEngine.AnimationModule.dll
                 typeof(AssetBundle).Assembly, // UnityEngine.AssetBundleModule.dll
-                // typeof(GUI).Assembly,         // UnityEngine.IMGUIModule.dll // IMGUI通常不建议在Python中使用
+                typeof(GUI).Assembly, // UnityEngine.IMGUIModule.dll
             };
 
             // 用户程序集
@@ -287,11 +287,9 @@ namespace UnityEditor.Scripting.Python
                 sb.AppendLine($"{indentStr}class {type.Name}:");
             }
 
-            bool hasMembers = false;
-
             // 构造函数
             ConstructorInfo[] constructors = type.GetConstructors(BindingFlags.Public | BindingFlags.Instance);
-            hasMembers = constructors.Length > 0;
+            bool hasMembers = constructors.Length > 0;
             if (constructors.Length == 1)
             {
                 sb.AppendLine($"{indentStr}    # Constructors");
@@ -403,10 +401,12 @@ namespace UnityEditor.Scripting.Python
         {
             string indentStr = new string(' ', indent * 4);
 
+            ParameterInfo[] methodParams = method.GetParameters();
+
             // 检查是否是运算符重载
             if (method.IsSpecialName && _operatorMapping.TryGetValue(method.Name, out string pythonMethod))
             {
-                string opParameters = GenerateParams(method.GetParameters());
+                string opParameters = GenerateParams(methodParams);
                 string opReturnType = GetPythonType(method.ReturnType);
                 sb.AppendLine($"{indentStr}def {pythonMethod}(self{opParameters}) -> {opReturnType}: ...");
                 return;
@@ -418,10 +418,10 @@ namespace UnityEditor.Scripting.Python
             }
 
             string parameters = method.IsStatic
-                ? GenerateParams(method.GetParameters(), includeLeadingComma: false)
-                : GenerateParams(method.GetParameters());
+                ? GenerateParams(methodParams, includeLeadingComma: false)
+                : GenerateParams(methodParams);
 
-            string returnType = GetPythonType(method.ReturnType);
+            string returnType = GenerateReturnTypes(method.ReturnType, methodParams);
             string selfParam = method.IsStatic ? "" : "self";
 
             sb.AppendLine($"{indentStr}def {method.Name}({selfParam}{parameters}) -> {returnType}: ...");
@@ -509,17 +509,15 @@ namespace UnityEditor.Scripting.Python
                 }
 
                 // 处理ref/out参数
-                if (p.IsOut)
-                {
-                    // out参数在Python中通常作为返回值的一部分
-                    return $"{paramName}: Any = None"; // 提供默认值
-                }
-
                 if (p.ParameterType.IsByRef)
                 {
-                    // ref参数需要特殊标记
                     Type elementType = p.ParameterType.GetElementType();
                     paramType = GetPythonType(elementType);
+
+                    if (p.IsOut)
+                        paramName = $"out_{paramName}";
+                    else
+                        paramName = $"ref_{paramName}";
                 }
 
                 if (p.HasDefaultValue)
@@ -553,6 +551,36 @@ namespace UnityEditor.Scripting.Python
 
             string result = string.Join(", ", paramList);
             return includeLeadingComma && result.Length > 0 ? ", " + result : result;
+        }
+
+        private static string GenerateReturnTypes(Type methodReturnType, ParameterInfo[] methodParams)
+        {
+            string returnType = GetPythonType(methodReturnType);
+            if (methodParams.Length == 0)
+                return returnType;
+
+            // ref/out参数在Python中按返回值处理
+            List<string> returnTypes = null;
+            foreach (ParameterInfo param in methodParams)
+            {
+                if (!param.ParameterType.IsByRef)
+                    continue;
+
+                Type elementType = param.ParameterType.GetElementType();
+                if (elementType == null)
+                    continue;
+
+                string paramType = GetPythonType(elementType);
+                returnTypes = returnTypes ?? new List<string>();
+                returnTypes.Add(paramType);
+            }
+
+            if (returnTypes == null || returnTypes.Count == 0)
+                return returnType;
+
+            returnTypes.Insert(0, returnType);
+            returnType = $"Tuple[{string.Join(", ", returnTypes)}]";
+            return returnType;
         }
 
         private static string GetSafePythonParamName(string name)
