@@ -34,7 +34,7 @@ namespace UnityEditor.Scripting.Python.Samples
         /// <summary>
         /// Menu to launch the client
         /// </summary>
-        [MenuItem("Python/Examples/PySide Example")]
+        [MenuItem("Samples/Python Scripting/PySide Example")]
         public static void OnMenuClick()
         {
             CreateOrReinitialize();
