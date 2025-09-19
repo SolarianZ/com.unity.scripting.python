@@ -16,7 +16,7 @@ namespace UnityEditor.Scripting.Python
             if (pythonScriptPath == null)
                 throw new InvalidOperationException("Python script path cannot be null.");
             if (!File.Exists(pythonScriptPath))
-                throw new InvalidOperationException("Python script path does not exist.");
+                throw new InvalidOperationException($"Python script path does not exist: {pythonScriptPath}");
 
             PythonEditorWindow window = GetWindowByID(windowID);
             if (!window)
@@ -34,11 +34,11 @@ namespace UnityEditor.Scripting.Python
             if (pythonScriptPath == null)
                 throw new InvalidOperationException("Python script path cannot be null.");
             if (!File.Exists(pythonScriptPath))
-                throw new InvalidOperationException("Python script path does not exist.");
+                throw new InvalidOperationException($"Python script path does not exist: {pythonScriptPath}");
 
             PythonEditorWindow window = GetWindowByID(windowID);
             if (!window)
-                window = CreateWindow<PythonEditorWindow>();
+                window = CreateWindow<T>();
             else if (!(window is T))
                 throw new InvalidOperationException($"Window ID '{windowID}' is already used by another window type '{window.GetType().FullName}'.");
 
