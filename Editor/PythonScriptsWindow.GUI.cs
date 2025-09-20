@@ -16,6 +16,7 @@ namespace UnityEditor.Scripting.Python
         private VisualElement _scriptOptionalButtonContainer;
         private TextField _scriptTextField;
         private ScrollView _outputScrollView;
+        private ToolbarToggle _clearOutputOnExecuteToggle;
         private TextField _outputTextField;
         [SerializeField, HideInInspector]
         private bool _isFirstTimeCreateGUI = true;
@@ -76,7 +77,7 @@ namespace UnityEditor.Scripting.Python
 
 
             // vertical split view
-            TwoPaneSplitView verticalSplitView = new TwoPaneSplitView(1, 100, TwoPaneSplitView.Orientation.Vertical, 0);
+            TwoPaneSplitView verticalSplitView = new TwoPaneSplitView(1, 200, TwoPaneSplitView.Orientation.Vertical, 0);
             horizontalSplitView.Add(verticalSplitView);
 
 
@@ -197,16 +198,32 @@ namespace UnityEditor.Scripting.Python
             Toolbar outputToolbar = new Toolbar
             {
                 name = "output-toolbar",
-                style =
-                {
-                    justifyContent = Justify.SpaceBetween,
-                }
             };
             outputContainer.Add(outputToolbar);
 
             // output-label
             Label outputLabel = CreateToolbarLabel("Output", "output-label");
             outputToolbar.Add(outputLabel);
+
+            // output-toolbar-placeholder
+            outputToolbar.Add(new VisualElement
+            {
+                name = "output-toolbar-placeholder",
+                style = { flexGrow = 1 }
+            });
+
+            // clear-output-on-execute-toggle
+            _clearOutputOnExecuteToggle = new ToolbarToggle
+            {
+                name = "clear-output-on-execute-toggle",
+                viewDataKey = $"{GetType().AssemblyQualifiedName}::clear-output-on-execute-toggle",
+                text = "Clear on Execute",
+                style =
+                {
+                    unityTextAlign = TextAnchor.MiddleCenter,
+                }
+            };
+            outputToolbar.Add(_clearOutputOnExecuteToggle);
 
             // clear-output-button
             ToolbarButton clearOutputButton = CreateToolbarButton("Clear", "clear-output-button", ClearPythonOutput);

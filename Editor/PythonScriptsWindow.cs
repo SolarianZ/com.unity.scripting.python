@@ -121,6 +121,9 @@ namespace UnityEditor.Scripting.Python
 
         private void ExecutePythonScript()
         {
+            if (_clearOutputOnExecuteToggle.value)
+                ClearPythonOutput();
+
             if (File.Exists(_scriptPath))
             {
                 PythonRunner.RunFile(_scriptPath);
