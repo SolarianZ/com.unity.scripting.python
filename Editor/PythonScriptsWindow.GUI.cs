@@ -31,14 +31,14 @@ namespace UnityEditor.Scripting.Python
             };
             rootVisualElement.Add(mainToolbar);
 
-            // open-script-folder-button
-            ToolbarButton openScriptFolderButton = CreateToolbarButton("Open Script Folder", "open-script-folder-button", OpenPythonScriptFolder);
-            mainToolbar.Add(openScriptFolderButton);
-
             // refresh-python-scripts-button
-            mainToolbar.Add(new ToolbarSpacer());
             ToolbarButton refreshPythonScriptsButton = CreateToolbarButton("Refresh Python Scripts", "refresh-python-scripts-button", RefreshPythonScripts);
             mainToolbar.Add(refreshPythonScriptsButton);
+
+            // open-script-folder-button
+            mainToolbar.Add(new ToolbarSpacer());
+            ToolbarButton openScriptFolderButton = CreateToolbarButton("Open Script Folder", "open-script-folder-button", OpenPythonScriptFolder);
+            mainToolbar.Add(openScriptFolderButton);
 
             // main-toolbar-placeholder
             mainToolbar.Add(new VisualElement
@@ -63,7 +63,7 @@ namespace UnityEditor.Scripting.Python
             #region Script Tree
 
             // script-tree-container
-            _scriptTreeContainer = new ScriptTreeViewContainer
+            _scriptTreeContainer = new ScriptTreeViewContainer(_scriptTreeViewState)
             {
                 name = "script-tree-container"
             };
@@ -252,6 +252,30 @@ namespace UnityEditor.Scripting.Python
             _isFirstTimeCreateGUI = false;
         }
 
+
+        #region Script Tree View State
+
+        private static string ScriptTreeViewStateKey => $"{typeof(PythonScriptsWindow).AssemblyQualifiedName}::{nameof(ScriptTreeViewStateKey)}";
+
+        [NonSerialized]
+        private TreeViewState _scriptTreeViewState;
+
+
+        private void SaveScriptTreeViewState()
+        {
+            string json = _scriptTreeViewState == null ? null : JsonUtility.ToJson(_scriptTreeViewState);
+            EditorUserSettings.SetConfigValue(ScriptTreeViewStateKey, json);
+        }
+
+        private void LoadScriptTreeViewState()
+        {
+            string json = EditorUserSettings.GetConfigValue(ScriptTreeViewStateKey);
+            _scriptTreeViewState = string.IsNullOrEmpty(json) ? new TreeViewState() : JsonUtility.FromJson<TreeViewState>(json);
+        }
+
+        #endregion
+
+
         private static Label CreateToolbarLabel(string text, string name)
         {
             Label toolbarLabel = new Label(text)
@@ -295,9 +319,9 @@ namespace UnityEditor.Scripting.Python
         };
 
 
-        public ScriptTreeViewContainer()
+        public ScriptTreeViewContainer(TreeViewState treeViewState)
         {
-            _treeView = new ScriptTreeView(new TreeViewState());
+            _treeView = new ScriptTreeView(treeViewState);
             _treeView.ScriptSelected += scriptPath => ScriptSelected?.Invoke(scriptPath);
             _treeView.Reload();
 

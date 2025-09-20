@@ -3,6 +3,7 @@ using System.IO;
 using UnityEngine;
 using UnityEngine.Assertions;
 using UnityEngine.UIElements;
+using UDebug = UnityEngine.Debug;
 
 namespace UnityEditor.Scripting.Python
 {
@@ -29,12 +30,33 @@ namespace UnityEditor.Scripting.Python
         private string _scriptEditorTextCache;
 
 
+        #region Unity  Events
+
+        private void OnEnable()
+        {
+            LoadScriptTreeViewState();
+        }
+
+        private void OnDisable()
+        {
+            SaveScriptTreeViewState();
+        }
+
+        #endregion
+
+
         private void OpenPythonScriptFolder()
         {
             if (!Directory.Exists(PythonScriptFolder))
                 return;
 
             EditorUtility.OpenWithDefaultApp(PythonScriptFolder);
+            // Process.Start(new ProcessStartInfo("code", PythonScriptFolder)
+            // {
+            //     FileName = "code",
+            //     Arguments = PythonScriptFolder,
+            //     WindowStyle = ProcessWindowStyle.Hidden,
+            // });
         }
 
         private void RefreshPythonScripts()
@@ -75,7 +97,7 @@ namespace UnityEditor.Scripting.Python
             }
             catch (Exception ex)
             {
-                Debug.LogException(ex);
+                UDebug.LogException(ex);
                 _scriptTextField.SetValueWithoutNotify("Exception occurred while reading script file!\n" +
                     "\n" +
                     $"Script file path:\n{_scriptPath}\n" +
