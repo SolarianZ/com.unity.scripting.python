@@ -165,7 +165,7 @@ namespace UnityEditor.Scripting.Python
 
         #region Python Output
 
-        private static readonly int _pythonOutputsCapacity = 200;
+        private static readonly int _pythonOutputsCapacity = 100 * 2; // 其中一半是Python自动输出的换行符
         private readonly Queue<string> _pythonOutputs = new Queue<string>(_pythonOutputsCapacity);
         private readonly StringBuilder _pythonOutputBuilder = new StringBuilder();
 
@@ -173,6 +173,7 @@ namespace UnityEditor.Scripting.Python
         private void ClearPythonOutput()
         {
             _pythonOutputs.Clear();
+            _pythonOutputBuilder.Clear();
             _outputTextField.SetValueWithoutNotify(null);
         }
 
@@ -182,13 +183,19 @@ namespace UnityEditor.Scripting.Python
             {
                 string oldOutput = _pythonOutputs.Dequeue();
                 _pythonOutputBuilder.Remove(0, oldOutput.Length);
+
+                if (_pythonOutputs.Peek() == "\n")
+                {
+                    oldOutput = _pythonOutputs.Dequeue();
+                    _pythonOutputBuilder.Remove(0, oldOutput.Length);
+                }
             }
 
             _pythonOutputs.Enqueue(content);
-            _pythonOutputBuilder.Append(content);
+            _pythonOutputBuilder.Append(content); // Python会自动输出一次单独的换行符，所以不要AppendLine
 
             _outputTextField.SetValueWithoutNotify(_pythonOutputBuilder.ToString());
-            _outputScrollView.verticalScroller.value = _outputScrollView.verticalScroller.highValue;
+            // _outputScrollView.verticalScroller.value = _outputScrollView.verticalScroller.highValue;
         }
 
         #endregion
