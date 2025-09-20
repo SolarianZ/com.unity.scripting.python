@@ -168,6 +168,7 @@ namespace UnityEditor.Scripting.Python
         private static readonly int _pythonOutputsCapacity = 100 * 2; // 其中一半是Python自动输出的换行符
         private readonly Queue<string> _pythonOutputs = new Queue<string>(_pythonOutputsCapacity);
         private readonly StringBuilder _pythonOutputBuilder = new StringBuilder();
+        private bool _pythonOutputChanged;
 
 
         private void ClearPythonOutput()
@@ -195,7 +196,16 @@ namespace UnityEditor.Scripting.Python
             _pythonOutputBuilder.Append(content); // Python会自动输出一次单独的换行符，所以不要AppendLine
 
             _outputTextField.SetValueWithoutNotify(_pythonOutputBuilder.ToString());
-            // _outputScrollView.verticalScroller.value = _outputScrollView.verticalScroller.highValue;
+            _pythonOutputChanged = true;
+        }
+
+        private void ScrollPythonOutputToBottomIfNeeded()
+        {
+            if (!_pythonOutputChanged)
+                return;
+
+            _outputScrollView.verticalScroller.value = _outputScrollView.verticalScroller.highValue;
+            _pythonOutputChanged = false;
         }
 
         #endregion

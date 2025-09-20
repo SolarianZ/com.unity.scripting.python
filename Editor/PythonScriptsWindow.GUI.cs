@@ -236,6 +236,7 @@ namespace UnityEditor.Scripting.Python
                 }
             };
             _outputTextField.Q(className: TextField.inputUssClassName).style.unityTextAlign = TextAnchor.UpperLeft;
+            _outputTextField.RegisterCallback<GeometryChangedEvent>(evt => EditorApplication.delayCall += ScrollPythonOutputToBottomIfNeeded);
             _outputScrollView.Add(_outputTextField);
 
             #endregion
