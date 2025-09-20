@@ -1,5 +1,8 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Text;
+using UnityEditor.Compilation;
 using UnityEngine;
 using UnityEngine.Assertions;
 using UnityEngine.UIElements;
@@ -7,7 +10,7 @@ using UDebug = UnityEngine.Debug;
 
 namespace UnityEditor.Scripting.Python
 {
-    public partial class PythonScriptsWindow : EditorWindow
+    public partial class PythonScriptsWindow : EditorWindow, IHasCustomMenu
     {
         [MenuItem("Tools/Python Scripting/Python Scripts Window")]
         public static void Open()
@@ -35,10 +38,15 @@ namespace UnityEditor.Scripting.Python
         private void OnEnable()
         {
             LoadScriptTreeViewState();
+
+            PythonStdoutBroadcaster.OnPythonStdout -= OnPythonStdout;
+            PythonStdoutBroadcaster.OnPythonStdout += OnPythonStdout;
         }
 
         private void OnDisable()
         {
+            PythonStdoutBroadcaster.OnPythonStdout -= OnPythonStdout;
+
             SaveScriptTreeViewState();
         }
 
@@ -154,9 +162,46 @@ namespace UnityEditor.Scripting.Python
             _scriptTextField.SetValueWithoutNotify(null);
         }
 
+
+        #region Python Output
+
+        private static readonly int _pythonOutputsCapacity = 200;
+        private readonly Queue<string> _pythonOutputs = new Queue<string>(_pythonOutputsCapacity);
+        private readonly StringBuilder _pythonOutputBuilder = new StringBuilder();
+
+
         private void ClearPythonOutput()
         {
+            _pythonOutputs.Clear();
             _outputTextField.SetValueWithoutNotify(null);
+        }
+
+        private void OnPythonStdout(string content)
+        {
+            if (_pythonOutputs.Count == _pythonOutputsCapacity)
+            {
+                string oldOutput = _pythonOutputs.Dequeue();
+                _pythonOutputBuilder.Remove(0, oldOutput.Length);
+            }
+
+            _pythonOutputs.Enqueue(content);
+            _pythonOutputBuilder.Append(content);
+
+            _outputTextField.SetValueWithoutNotify(_pythonOutputBuilder.ToString());
+            _outputScrollView.verticalScroller.value = _outputScrollView.verticalScroller.highValue;
+        }
+
+        #endregion
+
+
+        /// <inheritdoc />
+        void IHasCustomMenu.AddItemsToMenu(GenericMenu menu)
+        {
+            menu.AddItem(new GUIContent("Force Re-Compile C# Scripts"), false, () =>
+            {
+                AssetDatabase.Refresh();
+                CompilationPipeline.RequestScriptCompilation();
+            });
         }
     }
 }

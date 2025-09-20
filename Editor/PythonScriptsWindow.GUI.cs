@@ -15,6 +15,7 @@ namespace UnityEditor.Scripting.Python
         private ToolbarButton _executeScriptButton;
         private VisualElement _scriptOptionalButtonContainer;
         private TextField _scriptTextField;
+        private ScrollView _outputScrollView;
         private TextField _outputTextField;
         [SerializeField, HideInInspector]
         private bool _isFirstTimeCreateGUI = true;
@@ -212,7 +213,7 @@ namespace UnityEditor.Scripting.Python
             outputToolbar.Add(clearOutputButton);
 
             // output-scroll-view
-            ScrollView outputScrollView = new ScrollView(ScrollViewMode.Vertical)
+            _outputScrollView = new ScrollView(ScrollViewMode.Vertical)
             {
                 name = "output-scroll-view",
                 style =
@@ -220,8 +221,8 @@ namespace UnityEditor.Scripting.Python
                     flexGrow = 1,
                 }
             };
-            outputScrollView.Q(className: ScrollView.contentUssClassName).style.minHeight = Length.Percent(100);
-            outputContainer.Add(outputScrollView);
+            _outputScrollView.Q(className: ScrollView.contentUssClassName).style.minHeight = Length.Percent(100);
+            outputContainer.Add(_outputScrollView);
 
             // output-text-field
             _outputTextField = new TextField
@@ -235,7 +236,7 @@ namespace UnityEditor.Scripting.Python
                 }
             };
             _outputTextField.Q(className: TextField.inputUssClassName).style.unityTextAlign = TextAnchor.UpperLeft;
-            outputScrollView.Add(_outputTextField);
+            _outputScrollView.Add(_outputTextField);
 
             #endregion
 
@@ -270,7 +271,9 @@ namespace UnityEditor.Scripting.Python
         private void LoadScriptTreeViewState()
         {
             string json = EditorUserSettings.GetConfigValue(ScriptTreeViewStateKey);
-            _scriptTreeViewState = string.IsNullOrEmpty(json) ? new TreeViewState() : JsonUtility.FromJson<TreeViewState>(json);
+            _scriptTreeViewState = (string.IsNullOrEmpty(json)
+                ? new TreeViewState()
+                : JsonUtility.FromJson<TreeViewState>(json)) ?? new TreeViewState();
         }
 
         #endregion

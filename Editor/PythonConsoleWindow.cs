@@ -183,6 +183,9 @@ namespace UnityEditor.Scripting.Python
             // already showing, ShowWindow() won't be called, and code output
             // will never go to the console output.
             s_window = this;
+            
+            PythonStdoutBroadcaster.OnPythonStdout -= AddToOutput;
+            PythonStdoutBroadcaster.OnPythonStdout += AddToOutput;
         }
 
         #endregion
@@ -421,6 +424,7 @@ namespace UnityEditor.Scripting.Python
 
         private void OnDisable()
         {
+            PythonStdoutBroadcaster.OnPythonStdout -= AddToOutput;
             PythonRunner.DisposeScope();
         }
 
