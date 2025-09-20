@@ -1,4 +1,8 @@
 using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using UnityEditor.IMGUI.Controls;
 using UnityEditor.UIElements;
 using UnityEngine;
 using UnityEngine.UIElements;
@@ -7,9 +11,13 @@ namespace UnityEditor.Scripting.Python
 {
     partial class PythonScriptsWindow
     {
+        private ScriptTreeViewContainer _scriptTreeContainer;
+        private ToolbarButton _executeScriptButton;
         private VisualElement _scriptOptionalButtonContainer;
         private TextField _scriptTextField;
         private TextField _outputTextField;
+        [SerializeField, HideInInspector]
+        private bool _isFirstTimeCreateGUI = true;
 
 
         private void CreateGUI()
@@ -23,28 +31,51 @@ namespace UnityEditor.Scripting.Python
             };
             rootVisualElement.Add(mainToolbar);
 
+            // open-script-folder-button
+            ToolbarButton openScriptFolderButton = CreateToolbarButton("Open Script Folder", "open-script-folder-button", OpenPythonScriptFolder);
+            mainToolbar.Add(openScriptFolderButton);
+
+            // refresh-python-scripts-button
+            mainToolbar.Add(new ToolbarSpacer());
+            ToolbarButton refreshPythonScriptsButton = CreateToolbarButton("Refresh Python Scripts", "refresh-python-scripts-button", RefreshPythonScripts);
+            mainToolbar.Add(refreshPythonScriptsButton);
+
+            // main-toolbar-placeholder
+            mainToolbar.Add(new VisualElement
+            {
+                name = "main-toolbar-placeholder",
+                style = { flexGrow = 1 }
+            });
+
+            // open-python-settings-button
+            mainToolbar.Add(new ToolbarSpacer());
+            ToolbarButton openPythonSettingsButton = CreateToolbarButton("Open Python Settings", "open-python-settings-button", OpenPythonSettings);
+            mainToolbar.Add(openPythonSettingsButton);
+
             #endregion
 
 
             // horizontal split view
-            TwoPaneSplitView horizontalSplitView = new TwoPaneSplitView(0, 200, TwoPaneSplitView.Orientation.Horizontal, 0);
+            TwoPaneSplitView horizontalSplitView = new TwoPaneSplitView(0, 250, TwoPaneSplitView.Orientation.Horizontal, 0);
             rootVisualElement.Add(horizontalSplitView);
 
 
             #region Script Tree
 
             // script-tree-container
-            VisualElement scriptTreeContainer = new VisualElement
+            _scriptTreeContainer = new ScriptTreeViewContainer
             {
                 name = "script-tree-container"
             };
-            horizontalSplitView.Add(scriptTreeContainer);
+            _scriptTreeContainer.ScriptSelected += OnPythonScriptSelected;
+            _scriptTreeContainer.SetScriptFolder(PythonScriptFolder);
+            horizontalSplitView.Add(_scriptTreeContainer);
 
             #endregion
 
 
             // vertical split view
-            TwoPaneSplitView verticalSplitView = new TwoPaneSplitView(1, 200, TwoPaneSplitView.Orientation.Vertical, 0);
+            TwoPaneSplitView verticalSplitView = new TwoPaneSplitView(1, 100, TwoPaneSplitView.Orientation.Vertical, 0);
             horizontalSplitView.Add(verticalSplitView);
 
 
@@ -70,8 +101,8 @@ namespace UnityEditor.Scripting.Python
 
             // execute-script-button
             scriptEditorToolbar.Add(new ToolbarSpacer());
-            ToolbarButton executeScriptButton = CreateToolbarButton("Execute", "execute-script-button", ExecutePythonScript);
-            scriptEditorToolbar.Add(executeScriptButton);
+            _executeScriptButton = CreateToolbarButton("Execute", "execute-script-button", ExecutePythonScript);
+            scriptEditorToolbar.Add(_executeScriptButton);
 
 
             #region Optional Buttons
@@ -146,6 +177,7 @@ namespace UnityEditor.Scripting.Python
                 }
             };
             _scriptTextField.Q(className: TextField.inputUssClassName).style.unityTextAlign = TextAnchor.UpperLeft;
+            _scriptTextField.RegisterValueChangedCallback(evt => _scriptEditorTextCache = evt.newValue);
             scriptScrollView.Add(_scriptTextField);
 
             #endregion
@@ -206,6 +238,18 @@ namespace UnityEditor.Scripting.Python
             outputScrollView.Add(_outputTextField);
 
             #endregion
+
+
+            // Init GUI
+            InitGUIState();
+        }
+
+        private void InitGUIState()
+        {
+            if (_isFirstTimeCreateGUI)
+                _scriptTreeContainer.SelectScriptEditor();
+
+            _isFirstTimeCreateGUI = false;
         }
 
         private static Label CreateToolbarLabel(string text, string name)
@@ -236,6 +280,171 @@ namespace UnityEditor.Scripting.Python
                 }
             };
             return toolbarButton;
+        }
+    }
+
+    class ScriptTreeViewContainer : IMGUIContainer
+    {
+        public Action<string> ScriptSelected;
+
+        private readonly ScriptTreeView _treeView;
+        private readonly GUILayoutOption[] _layoutOptions =
+        {
+            GUILayout.ExpandWidth(true),
+            GUILayout.ExpandHeight(true),
+        };
+
+
+        public ScriptTreeViewContainer()
+        {
+            _treeView = new ScriptTreeView(new TreeViewState());
+            _treeView.ScriptSelected += scriptPath => ScriptSelected?.Invoke(scriptPath);
+            _treeView.Reload();
+
+            onGUIHandler = OnGUI;
+        }
+
+        public void SelectScriptEditor()
+        {
+            _treeView.SelectScriptEditor();
+        }
+
+        public void SetScriptFolder(string scriptFolder)
+        {
+            _treeView.SetScriptFolder(scriptFolder);
+        }
+
+        public void Refresh()
+        {
+            _treeView.Refresh();
+        }
+
+        private void OnGUI()
+        {
+            Rect rect = EditorGUILayout.GetControlRect(_layoutOptions);
+            _treeView.OnGUI(rect);
+        }
+
+
+        class ScriptTreeView : TreeView
+        {
+            private const int ScriptEditorID = 1;
+
+            public Action<string> ScriptSelected;
+
+            private readonly Dictionary<int, string> _id2Path = new Dictionary<int, string>();
+            private string _scriptFolder;
+
+
+            /// <inheritdoc />
+            public ScriptTreeView(TreeViewState state) : base(state) { }
+
+            public void SelectScriptEditor()
+            {
+                SetSelection(new int[] { ScriptEditorID }, TreeViewSelectionOptions.FireSelectionChanged);
+            }
+
+            public void SetScriptFolder(string scriptFolder)
+            {
+                _scriptFolder = scriptFolder;
+                SetSelection(Array.Empty<int>());
+                Reload();
+            }
+
+            public void Refresh()
+            {
+                IList<int> selection = GetSelection();
+                SetSelection(Array.Empty<int>());
+                Reload();
+                SetSelection(selection);
+            }
+
+            /// <inheritdoc />
+            protected override TreeViewItem BuildRoot()
+            {
+                _id2Path.Clear();
+
+                // Root
+                TreeViewItem root = new TreeViewItem(ScriptEditorID - 1, -1);
+
+                // Script Editor
+                TreeViewItem scriptEditorItem = new TreeViewItem(ScriptEditorID)
+                {
+                    displayName = "Script Editor",
+                };
+                _id2Path.Add(ScriptEditorID, string.Empty);
+                root.AddChild(scriptEditorItem);
+
+                int nextID = ScriptEditorID + 1;
+                BuildScriptHierarchy(_id2Path, root, _scriptFolder, ref nextID);
+
+                SetupDepthsFromParentsAndChildren(root);
+                return root;
+            }
+
+            private static void BuildScriptHierarchy(Dictionary<int, string> id2Path, TreeViewItem parent, string folder, ref int nextID)
+            {
+                if (!Directory.Exists(folder))
+                    return;
+
+                string[] pyFiles = Directory.GetFiles(folder, "*.py", SearchOption.TopDirectoryOnly);
+                if (pyFiles.Length == 0)
+                {
+                    bool hasScripts = Directory.EnumerateFiles(folder, "*.py", SearchOption.AllDirectories).Any();
+                    if (!hasScripts)
+                        return;
+                }
+
+                // Folder item
+                string folderName = Path.GetFileNameWithoutExtension(folder);
+                TreeViewItem folderItem = new TreeViewItem(nextID)
+                {
+                    displayName = folderName
+                };
+                // id2Path.Add(nextID, folder);
+                parent.AddChild(folderItem);
+                nextID++;
+
+                // Sub folders
+                string[] subFolders = Directory.GetDirectories(folder, "*", SearchOption.TopDirectoryOnly);
+                foreach (string subFolder in subFolders)
+                {
+                    BuildScriptHierarchy(id2Path, folderItem, subFolder, ref nextID);
+                }
+
+                // Direct files
+                foreach (string pyFile in pyFiles)
+                {
+                    string fileName = Path.GetFileNameWithoutExtension(pyFile);
+                    TreeViewItem fileItem = new TreeViewItem(nextID)
+                    {
+                        displayName = fileName
+                    };
+                    id2Path.Add(nextID, pyFile);
+                    folderItem.AddChild(fileItem);
+                    nextID++;
+                }
+            }
+
+            /// <inheritdoc />
+            protected override bool CanMultiSelect(TreeViewItem item) => false;
+
+            /// <inheritdoc />
+            protected override void SelectionChanged(IList<int> selectedIds)
+            {
+                base.SelectionChanged(selectedIds);
+
+                if (selectedIds == null || selectedIds.Count == 0)
+                {
+                    ScriptSelected?.Invoke(null);
+                }
+                else
+                {
+                    int scriptID = selectedIds[0];
+                    _id2Path.TryGetValue(scriptID, out string scriptPath);
+                    ScriptSelected?.Invoke(scriptPath);
+                }
+            }
         }
     }
 }

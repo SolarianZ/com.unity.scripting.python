@@ -14,6 +14,8 @@ namespace UnityEditor.Scripting.Python
     /// </summary>
     public sealed class PythonSettings : ScriptableObject
     {
+        internal const string SettingsPath = "Project/Python Scripting";
+        
         /// <summary>
         /// Current project directory, with a trailing slash
         /// </summary>
@@ -427,7 +429,7 @@ namespace UnityEditor.Scripting.Python
         [SettingsProvider]
         static SettingsProvider CreatePythonSettingsProvider()
         {
-            return new AssetSettingsProvider("Project/Python Scripting", () => PythonSettings.Instance);
+            return new AssetSettingsProvider(PythonSettings.SettingsPath, () => PythonSettings.Instance);
         }
     }
 }
