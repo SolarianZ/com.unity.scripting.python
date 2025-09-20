@@ -12,7 +12,7 @@ namespace UnityEditor.Scripting.Python
 {
     public partial class PythonScriptsWindow : EditorWindow, IHasCustomMenu
     {
-        [MenuItem("Tools/Python Scripting/Python Scripts Window")]
+        [MenuItem("Tools/Python Scripting/Python Scripts Window", false, 1)]
         public static void Open()
         {
             PythonScriptsWindow window = GetWindow<PythonScriptsWindow>();
