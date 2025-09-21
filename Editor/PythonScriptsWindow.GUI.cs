@@ -6,6 +6,7 @@ using UnityEditor.IMGUI.Controls;
 using UnityEditor.UIElements;
 using UnityEngine;
 using UnityEngine.UIElements;
+using TreeView = UnityEditor.IMGUI.Controls.TreeView;
 
 namespace UnityEditor.Scripting.Python
 {
@@ -58,7 +59,7 @@ namespace UnityEditor.Scripting.Python
 
 
             // horizontal split view
-            TwoPaneSplitView horizontalSplitView = new TwoPaneSplitView(0, 250, TwoPaneSplitView.Orientation.Horizontal, 0);
+            TwoPaneSplitView horizontalSplitView = new TwoPaneSplitView(0, 250, TwoPaneSplitViewOrientation.Horizontal);
             rootVisualElement.Add(horizontalSplitView);
 
 
@@ -77,7 +78,7 @@ namespace UnityEditor.Scripting.Python
 
 
             // vertical split view
-            TwoPaneSplitView verticalSplitView = new TwoPaneSplitView(1, 200, TwoPaneSplitView.Orientation.Vertical, 0);
+            TwoPaneSplitView verticalSplitView = new TwoPaneSplitView(1, 200, TwoPaneSplitViewOrientation.Vertical);
             horizontalSplitView.Add(verticalSplitView);
 
 

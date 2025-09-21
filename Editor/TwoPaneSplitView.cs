@@ -1,6 +1,6 @@
 // This widget is a modified version of that included in the UIElementsExample project.
 
-#if UNITY_2019_1_OR_NEWER
+#if !UNITY_2021_2_OR_NEWER
 
 using System.Collections.Generic;
 using UnityEngine;
@@ -8,6 +8,12 @@ using UnityEngine.UIElements;
 
 namespace UnityEditor.UIElements
 {
+    public enum TwoPaneSplitViewOrientation
+    {
+        Horizontal,
+        Vertical
+    }
+
 #if UNITY_2023_3_OR_NEWER
     [UxmlElement]
     internal partial class TwoPaneSplitView : VisualElement
@@ -25,12 +31,6 @@ namespace UnityEditor.UIElements
         private static readonly string s_HandleDragLineAnchorHorizontalClassName = s_HandleDragLineAnchorClassName + "--horizontal";
         private static readonly string s_VerticalClassName = "unity-two-pane-split-view--vertical";
         private static readonly string s_HorizontalClassName = "unity-two-pane-split-view--horizontal";
-
-        public enum Orientation
-        {
-            Horizontal,
-            Vertical
-        }
 
 #if !UNITY_2023_3_OR_NEWER
         public new class UxmlFactory : UxmlFactory<TwoPaneSplitView, UxmlTraits> {}
@@ -54,8 +54,8 @@ namespace UnityEditor.UIElements
                 var fixedPaneInitialSize = m_FixedPaneInitialSize.GetValueFromBag(bag, cc);
                 var orientationStr = m_Orientation.GetValueFromBag(bag, cc);
                 var orientation = orientationStr == "horizontal"
-                    ? Orientation.Horizontal
-                    : Orientation.Vertical;
+                    ? TwoPaneSplitViewOrientation.Horizontal
+                    : TwoPaneSplitViewOrientation.Vertical;
                 var buffer = m_Buffer.GetValueFromBag(bag, cc);
 
                 ((TwoPaneSplitView)ve).Init(fixedPaneIndex, fixedPaneInitialSize, orientation, buffer);
@@ -75,7 +75,7 @@ namespace UnityEditor.UIElements
 
         private VisualElement m_Content;
 
-        private Orientation m_Orientation;
+        private TwoPaneSplitViewOrientation m_Orientation;
         private int m_FixedPaneIndex;
         private float m_FixedPaneInitialDimension;
         private int m_Buffer;
@@ -152,27 +152,27 @@ namespace UnityEditor.UIElements
         public TwoPaneSplitView(
             int fixedPaneIndex,
             float fixedPaneStartDimension,
-            Orientation orientation,
-            int buffer) : this()
+            TwoPaneSplitViewOrientation orientation,
+            int buffer = 0) : this()
         {
             Init(fixedPaneIndex, fixedPaneStartDimension, orientation, buffer);
         }
 
-        public void Init(int fixedPaneIndex, float fixedPaneInitialDimension, Orientation orientation, int buffer)
+        public void Init(int fixedPaneIndex, float fixedPaneInitialDimension, TwoPaneSplitViewOrientation orientation, int buffer)
         {
             m_Orientation = orientation;
             m_FixedPaneIndex = fixedPaneIndex;
             m_FixedPaneInitialDimension = fixedPaneInitialDimension;
             m_Buffer = buffer;
 
-            if (m_Orientation == Orientation.Horizontal)
+            if (m_Orientation == TwoPaneSplitViewOrientation.Horizontal)
                 style.minWidth = m_FixedPaneInitialDimension;
             else
                 style.minHeight = m_FixedPaneInitialDimension;
 
             m_Content.RemoveFromClassList(s_HorizontalClassName);
             m_Content.RemoveFromClassList(s_VerticalClassName);
-            if (m_Orientation == Orientation.Horizontal)
+            if (m_Orientation == TwoPaneSplitViewOrientation.Horizontal)
                 m_Content.AddToClassList(s_HorizontalClassName);
             else
                 m_Content.AddToClassList(s_VerticalClassName);
@@ -180,7 +180,7 @@ namespace UnityEditor.UIElements
             // Create drag anchor line.
             m_DragLineAnchor.RemoveFromClassList(s_HandleDragLineAnchorHorizontalClassName);
             m_DragLineAnchor.RemoveFromClassList(s_HandleDragLineAnchorVerticalClassName);
-            if (m_Orientation == Orientation.Horizontal)
+            if (m_Orientation == TwoPaneSplitViewOrientation.Horizontal)
                 m_DragLineAnchor.AddToClassList(s_HandleDragLineAnchorHorizontalClassName);
             else
                 m_DragLineAnchor.AddToClassList(s_HandleDragLineAnchorVerticalClassName);
@@ -188,7 +188,7 @@ namespace UnityEditor.UIElements
             // Create drag
             m_DragLine.RemoveFromClassList(s_HandleDragLineHorizontalClassName);
             m_DragLine.RemoveFromClassList(s_HandleDragLineVerticalClassName);
-            if (m_Orientation == Orientation.Horizontal)
+            if (m_Orientation == TwoPaneSplitViewOrientation.Horizontal)
                 m_DragLine.AddToClassList(s_HandleDragLineHorizontalClassName);
             else
                 m_DragLine.AddToClassList(s_HandleDragLineVerticalClassName);
@@ -231,7 +231,7 @@ namespace UnityEditor.UIElements
             if (m_FixedPaneIndex == 0)
             {
                 m_FixedPane = m_LeftPane;
-                if (m_Orientation == Orientation.Horizontal)
+                if (m_Orientation == TwoPaneSplitViewOrientation.Horizontal)
                     m_LeftPane.style.width = m_FixedPaneInitialDimension;
                 else
                     m_LeftPane.style.height = m_FixedPaneInitialDimension;
@@ -245,7 +245,7 @@ namespace UnityEditor.UIElements
             if (m_FixedPaneIndex == 1)
             {
                 m_FixedPane = m_RightPane;
-                if (m_Orientation == Orientation.Horizontal)
+                if (m_Orientation == TwoPaneSplitViewOrientation.Horizontal)
                     m_RightPane.style.width = m_FixedPaneInitialDimension;
                 else
                     m_RightPane.style.height = m_FixedPaneInitialDimension;
@@ -260,7 +260,7 @@ namespace UnityEditor.UIElements
             m_FlexedPane.style.flexShrink = 0;
             m_FlexedPane.style.flexBasis = 0;
 
-            if (m_Orientation == Orientation.Horizontal)
+            if (m_Orientation == TwoPaneSplitViewOrientation.Horizontal)
             {
                 if (m_FixedPaneIndex == 0)
                     m_DragLineAnchor.style.left = m_FixedPaneInitialDimension;
@@ -297,7 +297,7 @@ namespace UnityEditor.UIElements
             var maxLength = this.resolvedStyle.width - m_Buffer;
             var dragLinePos = m_DragLineAnchor.resolvedStyle.left;
             var activeElementPos = m_FixedPane.resolvedStyle.left;
-            if (m_Orientation == Orientation.Vertical)
+            if (m_Orientation == TwoPaneSplitViewOrientation.Vertical)
             {
                 maxLength = this.resolvedStyle.height - m_Buffer;
                 dragLinePos = m_DragLineAnchor.resolvedStyle.top;
@@ -318,7 +318,7 @@ namespace UnityEditor.UIElements
                 }
                 else
                 {
-                    if (m_Orientation == Orientation.Horizontal)
+                    if (m_Orientation == TwoPaneSplitViewOrientation.Horizontal)
                         m_DragLineAnchor.style.left = activeElementPos;
                     else
                         m_DragLineAnchor.style.top = activeElementPos;
@@ -339,10 +339,10 @@ namespace UnityEditor.UIElements
             private VisualElement m_Pane;
             private int m_Direction;
             private float m_MinWidth;
-            private Orientation m_Orientation;
+            private TwoPaneSplitViewOrientation m_Orientation;
             private int m_Buffer;
 
-            public SquareResizer(TwoPaneSplitView splitView, int dir, float minWidth, Orientation orientation, int buffer)
+            public SquareResizer(TwoPaneSplitView splitView, int dir, float minWidth, TwoPaneSplitViewOrientation orientation, int buffer)
             {
                 m_Orientation = orientation;
                 m_MinWidth = minWidth;
@@ -370,7 +370,7 @@ namespace UnityEditor.UIElements
 
             public void ApplyDelta(float delta)
             {
-                float oldDimension = m_Orientation == Orientation.Horizontal
+                float oldDimension = m_Orientation == TwoPaneSplitViewOrientation.Horizontal
                     ? m_Pane.resolvedStyle.width
                     : m_Pane.resolvedStyle.height;
                 float newDimension = oldDimension + delta;
@@ -379,7 +379,7 @@ namespace UnityEditor.UIElements
                 if (newDimension < oldDimension && newDimension < m_MinWidth)
                     newDimension = m_MinWidth;
 
-                float maxLength = m_Orientation == Orientation.Horizontal
+                float maxLength = m_Orientation == TwoPaneSplitViewOrientation.Horizontal
                     ? m_SplitView.resolvedStyle.width
                     : m_SplitView.resolvedStyle.height;
                 maxLength -= m_Buffer;
@@ -388,7 +388,7 @@ namespace UnityEditor.UIElements
                 if (newDimension > oldDimension && newDimension > maxLength)
                     newDimension = maxLength;
 
-                if (m_Orientation == Orientation.Horizontal)
+                if (m_Orientation == TwoPaneSplitViewOrientation.Horizontal)
                 {
                     m_Pane.style.width = newDimension;
                     if (m_SplitView.m_FixedPaneIndex == 0)
@@ -432,7 +432,7 @@ namespace UnityEditor.UIElements
 
                 Vector2 diff = e.localMousePosition - m_Start;
                 float mouseDiff = diff.x;
-                if (m_Orientation == Orientation.Vertical)
+                if (m_Orientation == TwoPaneSplitViewOrientation.Vertical)
                     mouseDiff = diff.y;
 
                 float delta = m_Direction * mouseDiff;

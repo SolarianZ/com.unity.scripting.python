@@ -305,13 +305,13 @@ namespace UnityEditor.Scripting.Python
                     EditorGUILayout.PropertyField(pythonScriptFolderProp, GUIContent.none);
 
                 if (!string.IsNullOrEmpty(pythonScriptFolderValue) &&
-                    GUILayout.Button(EditorGUIUtility.IconContent("clear"), GUILayout.Width(28)))
+                    GUILayout.Button(EditorGUIUtility.IconContent("clear"), GUILayout.Width(28), GUILayout.Height(EditorGUIUtility.singleLineHeight)))
                 {
                     pythonScriptFolderProp.stringValue = string.Empty;
                     changesPending = true;
                 }
                 
-                if (GUILayout.Button(EditorGUIUtility.IconContent("folderopened icon"), GUILayout.Width(28)))
+                if (GUILayout.Button(EditorGUIUtility.IconContent("folderopened icon"), GUILayout.Width(28), GUILayout.Height(EditorGUIUtility.singleLineHeight)))
                 {
                     string currentDir = string.IsNullOrEmpty(pythonScriptFolderValue)
                         ? Application.dataPath
