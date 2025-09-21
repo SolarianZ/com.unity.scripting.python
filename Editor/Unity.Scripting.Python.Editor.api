@@ -12,12 +12,9 @@ namespace UnityEditor.Scripting.Python
         public static void ShowWindow(string codeToSave);
     }
 
-    public class PythonConsoleWindow : EditorWindow
+    public static class PythonStdoutBroadcaster
     {
-        public PythonConsoleWindow() {}
-        public static void AddToOutput(string input);
-        public void OnEnable();
-        [MenuItem(@"Window/General/Python Script Editor")] public static void ShowWindow();
+        public static void BroadcastPythonStdout(string content);
     }
 
     public class PythonInstallException : System.Exception

@@ -14,6 +14,8 @@ namespace UnityEditor.Scripting.Python
     /// </summary>
     public sealed class PythonSettings : ScriptableObject
     {
+        internal const string SettingsPath = "Project/Python Scripting";
+        
         /// <summary>
         /// Current project directory, with a trailing slash
         /// </summary>
@@ -89,6 +91,15 @@ namespace UnityEditor.Scripting.Python
             get { return System.Reflection.Assembly.GetAssembly(typeof(PythonEngine)).GetName().Version.ToString(); }
         }
 
+        [SerializeField]
+        string m_pythonScriptFolder;
+
+        public static string GetPythonScriptFolder()
+        {
+            return Instance.m_pythonScriptFolder;
+        }
+        
+        
         /////////
         /// User site-packages.
         /// Set via the serializedObject workflow.
@@ -240,7 +251,7 @@ namespace UnityEditor.Scripting.Python
             }
         }
 
-        bool m_SitePackagesChangesPending = false;
+        bool changesPending = false;
 
         /// <summary>
         /// Draw the editor UI in immediate mode.
@@ -253,6 +264,9 @@ namespace UnityEditor.Scripting.Python
             // Settings for in-process next (may also affect out-of-process Python).
             // Settings for out-of-process next.
             // TODO: nicer UI.
+
+
+            #region Package Information
 
             EditorGUILayout.LabelField("Versions", EditorStyles.boldLabel);
 
@@ -268,9 +282,58 @@ namespace UnityEditor.Scripting.Python
                 new GUIContent("Python for .NET: " + PythonSettings.PythonNetVersion,
                     "Python Scripting is using Python for .NET version " + PythonSettings.PythonNetVersion));
 
+            #endregion
+
+
             EditorGUILayout.Separator();
 
-            //Site Packages section.
+
+            #region Python Scripts section
+
+            EditorGUILayout.LabelField("Python Scripts", EditorStyles.boldLabel);
+
+            var pythonScriptFolderProp = serializedObject.FindProperty("m_pythonScriptFolder");
+            var pythonScriptFolderValue = pythonScriptFolderProp.stringValue;
+            
+            if(!Directory.Exists(pythonScriptFolderValue))
+                EditorGUILayout.HelpBox("Python script directory does not exist!", MessageType.Error);            
+
+            using (new EditorGUILayout.HorizontalScope())
+            {
+                EditorGUILayout.PrefixLabel("Python Script Directory");
+                using (new EditorGUI.DisabledScope(true))
+                    EditorGUILayout.PropertyField(pythonScriptFolderProp, GUIContent.none);
+
+                if (!string.IsNullOrEmpty(pythonScriptFolderValue) &&
+                    GUILayout.Button(EditorGUIUtility.IconContent("clear"), GUILayout.Width(28)))
+                {
+                    pythonScriptFolderProp.stringValue = string.Empty;
+                    changesPending = true;
+                }
+                
+                if (GUILayout.Button(EditorGUIUtility.IconContent("folderopened icon"), GUILayout.Width(28)))
+                {
+                    string currentDir = string.IsNullOrEmpty(pythonScriptFolderValue)
+                        ? Application.dataPath
+                        : pythonScriptFolderValue;
+                    string pythonScriptDir = EditorUtility.OpenFolderPanel("Select Python Script Directory",
+                        currentDir, null);
+                    if (!string.IsNullOrEmpty(pythonScriptDir) && pythonScriptDir != pythonScriptFolderValue)
+                    {
+                        pythonScriptFolderProp.stringValue = pythonScriptDir;
+                        changesPending = true;
+                    }
+                }
+            }
+            
+            #endregion
+            
+            
+            EditorGUILayout.Separator();
+
+            
+            #region Site Packages section
+
             EditorGUILayout.LabelField("Site Packages", EditorStyles.boldLabel);
 
             // The site packages array goes through the serializedObject code path
@@ -284,30 +347,52 @@ namespace UnityEditor.Scripting.Python
 
                 if (check.changed && serializedObject.hasModifiedProperties)
                 {
-                    m_SitePackagesChangesPending = true;
+                    changesPending = true;
                 }
             }
 
+            #endregion
+            
+
+            EditorGUILayout.Separator();
+
+            
+            #region Apply/Revert Buttons
+            
             using (new EditorGUILayout.HorizontalScope())
-            using (new EditorGUI.DisabledScope(!m_SitePackagesChangesPending))
             {
-                GUI.SetNextControlName("Buttons");
-
-                if (GUILayout.Button("Apply", GUILayout.Width(100)))
+                using (new EditorGUI.DisabledScope(!changesPending))
                 {
-                    GUI.FocusControl("Buttons");
-                    serializedObject.ApplyModifiedProperties();
-                    PythonSettings.ApplyChanges();
+                    GUI.SetNextControlName("Buttons");
 
-                    m_SitePackagesChangesPending = false;
-                }
+                    Color guiColor = GUI.color;
+                    try
+                    {
+                        if (changesPending)
+                            GUI.color = Color.green;
+                        if (GUILayout.Button("Apply", GUILayout.Width(100)))
+                        {
+                            GUI.FocusControl("Buttons");
+                            serializedObject.ApplyModifiedProperties();
+                            PythonSettings.ApplyChanges();
 
-                if (GUILayout.Button("Revert", GUILayout.Width(100)))
-                {
-                    GUI.FocusControl("Buttons");
-                    serializedObject.Update();
+                            changesPending = false;
+                        }
 
-                    m_SitePackagesChangesPending = false;
+                        if (changesPending)
+                            GUI.color = Color.yellow;
+                        if (GUILayout.Button("Revert", GUILayout.Width(100)))
+                        {
+                            GUI.FocusControl("Buttons");
+                            serializedObject.Update();
+
+                            changesPending = false;
+                        }
+                    }
+                    finally
+                    {
+                        GUI.color = guiColor;
+                    }
                 }
             }
 
@@ -316,27 +401,35 @@ namespace UnityEditor.Scripting.Python
                 EditorGUILayout.HelpBox("The package search path has been modified. A Unity restart is required.", MessageType.Warning);
             }
 
+            #endregion
+
+            
             EditorGUILayout.Separator();
+
+
+            #region Terminal
 
 #if UNITY_EDITOR_WIN || UNITY_EDITOR_OSX
             // Terminal section.
             EditorGUILayout.LabelField("Terminal", EditorStyles.boldLabel);
 
             if (GUILayout.Button(
-                new GUIContent("Launch Terminal",
-                    "Open a Terminal set up with the Python executable provided with the Python Scripting package." +
-                    "\n\nUse the Terminal to install Python modules and packages with pip, for example."),
-                GUILayout.Width(125)))
+                    new GUIContent("Launch Terminal",
+                        "Open a Terminal set up with the Python executable provided with the Python Scripting package." +
+                        "\n\nUse the Terminal to install Python modules and packages with pip, for example."),
+                    GUILayout.Width(125)))
             {
                 PythonRunner.SpawnShell();
             }
 #endif
+
+            #endregion
         }
 
         [SettingsProvider]
         static SettingsProvider CreatePythonSettingsProvider()
         {
-            return new AssetSettingsProvider("Project/Python Scripting", () => PythonSettings.Instance);
+            return new AssetSettingsProvider(PythonSettings.SettingsPath, () => PythonSettings.Instance);
         }
     }
 }

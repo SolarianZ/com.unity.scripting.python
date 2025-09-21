@@ -74,7 +74,7 @@ namespace UnityEditor.Scripting.Python
         };
 
 
-        [MenuItem("Tools/Python Scripting/Re-Generate Stubs")]
+        [MenuItem("Tools/Python Scripting/Re-Generate Stubs", false, 21)]
         public static void GenerateStubs()
         {
             try
@@ -115,7 +115,7 @@ namespace UnityEditor.Scripting.Python
             }
         }
 
-        [MenuItem("Tools/Python Scripting/Open Stubs Directory")]
+        [MenuItem("Tools/Python Scripting/Open Stubs Directory", false, 22)]
         public static void OpenStubsDirectory()
         {
             if (Directory.Exists(OutputDirectory))

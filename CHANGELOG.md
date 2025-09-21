@@ -4,6 +4,17 @@ All notable changes to this package will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [7.2.0] - 2025-09-21
+### Added
+* Added a **Python Script Directory** field in `PythonSettings` to specify the directory for your project's Python scripts.
+* **Python Scripts Window**:
+  - Quickly browse and execute scripts from the specified **Python Script Directory**.
+  - Edit and run temporary scripts on the fly.
+  - This window replaces the original **Python Script Editor** window.
+
+### Changed
+*  Changed the redirection target of Python's `sys.stdout` from `PythonConsoleWindow.AddToOutput` to `PythonStdoutBroadcaster.BroadcastPythonStdout`. 
+
 ## [7.1.0] - 2025-09-19
 ### Added
 * Added PythonEditorWindow to support draw EditorWindows from Python.
