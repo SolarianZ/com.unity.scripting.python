@@ -71,7 +71,7 @@ namespace UnityEditor.Scripting.Python
                 name = "script-tree-container"
             };
             _scriptTreeContainer.ScriptSelected += OnPythonScriptSelected;
-            _scriptTreeContainer.SetScriptFolder(PythonScriptFolder);
+            _scriptTreeContainer.SetScriptFolder(PythonScriptFolder, false);
             horizontalSplitView.Add(_scriptTreeContainer);
 
             #endregion
@@ -355,9 +355,9 @@ namespace UnityEditor.Scripting.Python
             _treeView.SelectScriptEditor();
         }
 
-        public void SetScriptFolder(string scriptFolder)
+        public void SetScriptFolder(string scriptFolder, bool keepSelection)
         {
-            _treeView.SetScriptFolder(scriptFolder);
+            _treeView.SetScriptFolder(scriptFolder, keepSelection);
         }
 
         public void Refresh()
@@ -390,11 +390,15 @@ namespace UnityEditor.Scripting.Python
                 SetSelection(new int[] { ScriptEditorID }, TreeViewSelectionOptions.FireSelectionChanged);
             }
 
-            public void SetScriptFolder(string scriptFolder)
+            public void SetScriptFolder(string scriptFolder, bool keepSelection)
             {
+                IList<int> selection = keepSelection ? GetSelection() : null;
                 _scriptFolder = scriptFolder;
                 SetSelection(Array.Empty<int>());
                 Reload();
+
+                if (keepSelection)
+                    SetSelection(selection);
             }
 
             public void Refresh()

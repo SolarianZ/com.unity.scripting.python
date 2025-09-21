@@ -69,7 +69,7 @@ namespace UnityEditor.Scripting.Python
 
         private void RefreshPythonScripts()
         {
-            _scriptTreeContainer.Refresh();
+            _scriptTreeContainer.SetScriptFolder(PythonScriptFolder, true);
         }
 
         private void OpenPythonSettings()
