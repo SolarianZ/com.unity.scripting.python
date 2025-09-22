@@ -251,6 +251,7 @@ namespace UnityEditor.Scripting.Python
                 style =
                 {
                     flexGrow = 1,
+                    whiteSpace = WhiteSpace.Normal,
                 }
             };
             _outputTextField.Q(className: TextField.inputUssClassName).style.unityTextAlign = TextAnchor.UpperLeft;
