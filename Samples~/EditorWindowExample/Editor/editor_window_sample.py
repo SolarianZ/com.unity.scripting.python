@@ -1,5 +1,6 @@
 from typing import Optional
 from UnityEngine import *
+from UnityEngine import Debug as UDebug
 from UnityEngine import Object as UObject
 from UnityEditor import *
 from System import Action
@@ -55,14 +56,14 @@ def handle_unity_clean():
         window.PyOnGUIHandler = None
         window.PyCleanHandler = None
         window = None
-        Debug.Log("[PythonEditorWindow] Handlers cleaned")
+        UDebug.Log("[PythonEditorWindow] Handlers cleaned")
 
 
 # Register handlers
 def register_unity_handlers():
     new_window = PythonEditorWindow.GetWindowByID(WINDOW_ID)
     if new_window is None:
-        Debug.LogError(f"[PythonEditorWindow] Window not found: {WINDOW_ID}")
+        UDebug.LogError(f"[PythonEditorWindow] Window not found: {WINDOW_ID}")
         return
 
     global window
@@ -74,7 +75,7 @@ def register_unity_handlers():
     window.PyUpdateHandler = Action(handle_unity_update)
     window.PyOnGUIHandler = Action(handle_unity_ongui)
     window.PyCleanHandler = Action(handle_unity_clean)
-    Debug.Log("[PythonEditorWindow] Handlers registered")
+    UDebug.Log("[PythonEditorWindow] Handlers registered")
 
 
 # Init

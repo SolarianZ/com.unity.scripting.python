@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
+using Python.Runtime;
 using UnityEditor.Compilation;
 using UnityEngine;
 using UnityEngine.Assertions;
@@ -39,19 +40,22 @@ namespace UnityEditor.Scripting.Python
         {
             LoadScriptTreeViewState();
 
-            PythonStdoutBroadcaster.OnPythonStdout -= OnPythonStdout;
-            PythonStdoutBroadcaster.OnPythonStdout += OnPythonStdout;
+            PythonStdoutBroadcaster.OnPythonStdout -= RecordPythonOutput;
+            PythonStdoutBroadcaster.OnPythonStdout += RecordPythonOutput;
         }
 
         private void OnDisable()
         {
-            PythonStdoutBroadcaster.OnPythonStdout -= OnPythonStdout;
+            PythonStdoutBroadcaster.OnPythonStdout -= RecordPythonOutput;
+            PythonRunner.DisposeScope();
 
             SaveScriptTreeViewState();
         }
 
         #endregion
 
+
+        #region Toolbar
 
         private void OpenPythonScriptFolder()
         {
@@ -76,6 +80,11 @@ namespace UnityEditor.Scripting.Python
         {
             SettingsService.OpenProjectSettings(PythonSettings.SettingsPath);
         }
+
+        #endregion
+
+
+        #region Python Script
 
         private void OnPythonScriptSelected(string scriptPath)
         {
@@ -126,13 +135,52 @@ namespace UnityEditor.Scripting.Python
 
             if (File.Exists(_scriptPath))
             {
-                PythonRunner.RunFile(_scriptPath);
+                try
+                {
+                    PythonRunner.RunFile(_scriptPath);
+                }
+                catch (PythonException pyEx)
+                {
+                    UDebug.LogException(pyEx);
+                    string pyError = ExtractPythonError(pyEx);
+                    RecordPythonOutput(pyError);
+                }
+                catch (Exception ex)
+                {
+                    UDebug.LogException(ex);
+                }
+
                 return;
             }
 
             Assert.IsFalse(_scriptTextField.isReadOnly);
             string code = _scriptTextField.value;
-            PythonRunner.RunString(code, "__main__");
+            try
+            {
+                PythonRunner.RunString(code, "__main__");
+            }
+            catch (PythonException pyEx)
+            {
+                UDebug.LogException(pyEx);
+                string pyError = ExtractPythonError(pyEx);
+                RecordPythonOutput(pyError);
+            }
+            catch (Exception ex)
+            {
+                UDebug.LogException(ex);
+            }
+        }
+
+        private static string ExtractPythonError(PythonException pyEx)
+        {
+            const string PyNetCallSite = "at Python.Runtime.PythonException.ThrowLastAsClrException";
+            int pyNetCallSiteIndex = pyEx.StackTrace.IndexOf(PyNetCallSite, StringComparison.Ordinal);
+            if (pyNetCallSiteIndex == -1)
+                return pyEx.Message;
+
+            string pyStackTrace = pyEx.StackTrace.Substring(0, pyNetCallSiteIndex).TrimEnd();
+            string pyError = $"{pyEx.Message}\n{pyStackTrace}";
+            return pyError;
         }
 
         private void SavePythonScript()
@@ -165,6 +213,8 @@ namespace UnityEditor.Scripting.Python
             _scriptTextField.SetValueWithoutNotify(null);
         }
 
+        #endregion
+
 
         #region Python Output
 
@@ -181,7 +231,7 @@ namespace UnityEditor.Scripting.Python
             _outputTextField.SetValueWithoutNotify(null);
         }
 
-        private void OnPythonStdout(string content)
+        private void RecordPythonOutput(string content)
         {
             if (_pythonOutputs.Count == _pythonOutputsCapacity)
             {
