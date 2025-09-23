@@ -624,7 +624,7 @@ namespace UnityEditor.Scripting.Python
             proc.StartInfo.UseShellExecute = false;
             proc.StartInfo.RedirectStandardError = true;
             proc.StartInfo.WorkingDirectory = System.IO.Directory.GetCurrentDirectory();
-            Console.WriteLine($"Unpacking Python using {proc.StartInfo.FileName} {args}");
+            Debug.Log($"Unpacking Python using {proc.StartInfo.FileName} {args}");
             proc.Start();
             while (!proc.HasExited)
             {
@@ -690,7 +690,7 @@ namespace UnityEditor.Scripting.Python
                 dynamic sys = Py.Import("sys");
                 var sysPath = sys.GetAttr("path").ToString();
                 // Console.Write writes only to the Editor.log file.
-                Console.Write($"Python Scripting initialized:\n  version = {PythonEngine.Version}\n  sys.path = {sysPath}\n");
+                Debug.Log($"Python Scripting initialized:\n  version = {PythonEngine.Version}\n  sys.path = {sysPath}\n");
             }
 
             // Now set up some other features

@@ -21,6 +21,8 @@ namespace UnityEditor.Scripting.Python
         private TextField _outputTextField;
         [SerializeField, HideInInspector]
         private bool _isFirstTimeCreateGUI = true;
+        [NonSerialized]
+        private bool _isGUICreated;
 
 
         private void CreateGUI()
@@ -66,7 +68,7 @@ namespace UnityEditor.Scripting.Python
             #region Script Tree
 
             // script-tree-container
-            _scriptTreeContainer = new ScriptTreeViewContainer(_scriptTreeViewState)
+            _scriptTreeContainer = new ScriptTreeViewContainer(LoadScriptTreeViewState())
             {
                 name = "script-tree-container"
             };
@@ -262,6 +264,7 @@ namespace UnityEditor.Scripting.Python
 
 
             // Init GUI
+            _isGUICreated = true;
             InitGUIState();
         }
 
@@ -269,6 +272,8 @@ namespace UnityEditor.Scripting.Python
         {
             if (_isFirstTimeCreateGUI)
                 _scriptTreeContainer.SelectScriptEditor();
+            else
+                OnPythonScriptSelected(_scriptTreeContainer.SelectedScriptPath);
 
             _isFirstTimeCreateGUI = false;
         }
@@ -288,12 +293,13 @@ namespace UnityEditor.Scripting.Python
             EditorUserSettings.SetConfigValue(ScriptTreeViewStateKey, json);
         }
 
-        private void LoadScriptTreeViewState()
+        private TreeViewState LoadScriptTreeViewState()
         {
             string json = EditorUserSettings.GetConfigValue(ScriptTreeViewStateKey);
             _scriptTreeViewState = (string.IsNullOrEmpty(json)
                 ? new TreeViewState()
                 : JsonUtility.FromJson<TreeViewState>(json)) ?? new TreeViewState();
+            return _scriptTreeViewState;
         }
 
         #endregion
@@ -332,6 +338,7 @@ namespace UnityEditor.Scripting.Python
 
     class ScriptTreeViewContainer : IMGUIContainer
     {
+        public string SelectedScriptPath { get; private set; }
         public Action<string> ScriptSelected;
 
         private readonly ScriptTreeView _treeView;
@@ -345,7 +352,11 @@ namespace UnityEditor.Scripting.Python
         public ScriptTreeViewContainer(TreeViewState treeViewState)
         {
             _treeView = new ScriptTreeView(treeViewState);
-            _treeView.ScriptSelected += scriptPath => ScriptSelected?.Invoke(scriptPath);
+            _treeView.ScriptSelected += scriptPath =>
+            {
+                SelectedScriptPath = scriptPath;
+                ScriptSelected?.Invoke(scriptPath);
+            };
             _treeView.Reload();
 
             onGUIHandler = OnGUI;
@@ -395,19 +406,19 @@ namespace UnityEditor.Scripting.Python
             {
                 IList<int> selection = keepSelection ? GetSelection() : null;
                 _scriptFolder = scriptFolder;
-                SetSelection(Array.Empty<int>());
+                SetSelection(Array.Empty<int>(), TreeViewSelectionOptions.FireSelectionChanged);
                 Reload();
 
                 if (keepSelection)
-                    SetSelection(selection);
+                    SetSelection(selection, TreeViewSelectionOptions.FireSelectionChanged);
             }
 
             public void Refresh()
             {
                 IList<int> selection = GetSelection();
-                SetSelection(Array.Empty<int>());
+                SetSelection(Array.Empty<int>(), TreeViewSelectionOptions.FireSelectionChanged);
                 Reload();
-                SetSelection(selection);
+                SetSelection(selection, TreeViewSelectionOptions.FireSelectionChanged);
             }
 
             /// <inheritdoc />

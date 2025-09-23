@@ -38,8 +38,6 @@ namespace UnityEditor.Scripting.Python
 
         private void OnEnable()
         {
-            LoadScriptTreeViewState();
-
             PythonStdoutBroadcaster.OnPythonStdout -= RecordPythonOutput;
             PythonStdoutBroadcaster.OnPythonStdout += RecordPythonOutput;
         }
@@ -74,6 +72,7 @@ namespace UnityEditor.Scripting.Python
         private void RefreshPythonScripts()
         {
             _scriptTreeContainer.SetScriptFolder(PythonScriptFolder, true);
+            OnPythonScriptSelected(_scriptPath);
         }
 
         private void OpenPythonSettings()
@@ -88,6 +87,9 @@ namespace UnityEditor.Scripting.Python
 
         private void OnPythonScriptSelected(string scriptPath)
         {
+            if (!_isGUICreated)
+                return;
+
             _scriptPath = scriptPath;
             _executeScriptButton.SetEnabled(IsExecutableSelected);
 
@@ -221,6 +223,7 @@ namespace UnityEditor.Scripting.Python
         private static readonly int _pythonOutputsCapacity = 100 * 2; // 其中一半是Python自动输出的换行符
         private readonly Queue<string> _pythonOutputs = new Queue<string>(_pythonOutputsCapacity);
         private readonly StringBuilder _pythonOutputBuilder = new StringBuilder();
+        [NonSerialized] // 避免重编代码后恢复窗口时出发滚动到底，导致文本框异常上移
         private bool _pythonOutputChanged;
 
 

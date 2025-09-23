@@ -6,7 +6,6 @@ using System.Reflection;
 using System.Text;
 using UnityEngine;
 using UnityEngine.Assertions;
-using UObject = UnityEngine.Object;
 
 namespace UnityEditor.Scripting.Python
 {
@@ -84,9 +83,12 @@ namespace UnityEditor.Scripting.Python
                 if (Directory.Exists(OutputDirectory))
                     Directory.Delete(OutputDirectory, true);
                 Directory.CreateDirectory(OutputDirectory);
+                
+                // 并行生成存根的意义不大，实测超大项目中并行生成也就快几秒
+                // 考虑改为后台生成，避免阻塞编辑器
 
                 // 获取所有需要生成存根的程序集
-                HashSet<Assembly> assemblies = GetTargetAssemblies();
+                ICollection<Assembly> assemblies = GetTargetAssemblies();
                 int current = 0;
                 foreach (Assembly assembly in assemblies)
                 {
@@ -124,22 +126,24 @@ namespace UnityEditor.Scripting.Python
                 EditorUtility.DisplayDialog("Notice", "Stubs directory does not exist.", "OK");
         }
 
-        private static HashSet<Assembly> GetTargetAssemblies()
+        private static ICollection<Assembly> GetTargetAssemblies()
         {
-            // AppDomain.CurrentDomain.GetAssemblies()
+            return AppDomain.CurrentDomain.GetAssemblies();
+            /*
             HashSet<Assembly> assemblies = new HashSet<Assembly>
             {
                 // C# 核心程序集
                 typeof(object).Assembly, // mscorlib or System.Private.CoreLib
                 // Unity核心程序集
                 typeof(Editor).Assembly, // UnityEditor.dll
-                typeof(UObject).Assembly, // UnityEngine.CoreModule.dll
+                typeof(UnityEngine.Object).Assembly, // UnityEngine.CoreModule.dll
                 typeof(Animation).Assembly, // UnityEngine.AnimationModule.dll
                 typeof(AssetBundle).Assembly, // UnityEngine.AssetBundleModule.dll
                 typeof(GUI).Assembly, // UnityEngine.IMGUIModule.dll
             };
 
             // 用户程序集
+            // Library/ScriptAssemblies中没有直接放入工程中的DLL，会导致没有这些DLL的存根
             string[] userAssemblies = Directory.GetFiles("Library/ScriptAssemblies", "*.dll");
             foreach (string path in userAssemblies)
             {
@@ -155,6 +159,7 @@ namespace UnityEditor.Scripting.Python
             }
 
             return assemblies;
+            */
         }
 
         private static void GenerateAssemblyStub(Assembly assembly, string outputPath)
