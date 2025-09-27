@@ -64,7 +64,7 @@ namespace UnityEditor.Scripting.Python.Packages
         /// </summary>
         static int CompileRequirements(string requirementsFile, string pythonInterpreter)
         {
-            PythonRunner.EnsureInitialized();
+            PythonBridge.EnsureInitialized();
             using (Py.GIL())
             {
                 var args = new List<string>();
@@ -75,7 +75,7 @@ namespace UnityEditor.Scripting.Python.Packages
                 args.Add($"\"{compiledRequirementsPath}\"");
                 args.Add($"\"{requirementsFile}\"");
 
-                using (var process = PythonRunner.SpawnPythonProcess(args, redirectOutput: true))
+                using (var process = PythonBridge.SpawnPythonProcess(args, redirectOutput: true))
                 {
                     ProgressBarHelper(process, "Compiling requirements", "Pip requirements compilation in progress");
                     process.WaitForExit();
@@ -113,7 +113,7 @@ namespace UnityEditor.Scripting.Python.Packages
         private static string UpdatePackagesHelper(string requirementsFile,
             string pythonInterpreter)
         {
-            PythonRunner.EnsureInitialized();
+            PythonBridge.EnsureInitialized();
             using (Py.GIL())
             {
                 var args = new List<string>();
@@ -122,7 +122,7 @@ namespace UnityEditor.Scripting.Python.Packages
                 // Only take packages in our site-packages, don't pick up the ones installed on the system.
                 args.Add($"\"{Path.GetFullPath(PythonSettings.kSitePackagesRelativePath)}\"");
 
-                using (var process = PythonRunner.SpawnPythonProcess(args, redirectOutput: true))
+                using (var process = PythonBridge.SpawnPythonProcess(args, redirectOutput: true))
                 {
                     ProgressBarHelper(process, "Updating required pip packages", "This could take a few minutes");
 
@@ -157,7 +157,7 @@ namespace UnityEditor.Scripting.Python.Packages
         internal static string UpdatePackages(string requirementsFile,
             string pythonInterpreter = PythonSettings.kDefaultPython)
         {
-            PythonRunner.EnsureInitialized();
+            PythonBridge.EnsureInitialized();
             using (Py.GIL())
             {
                 // As piptools sync is made to work only with requirements that have been

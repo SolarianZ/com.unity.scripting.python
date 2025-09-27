@@ -12,6 +12,7 @@ using UnityEngine.UIElements;
 namespace UnityEditor.Scripting.Python
 {
     // TODO: Ultimately, this class should be renamed to PythonScriptEditorWindow.
+    [Obsolete("Use 'PythonScriptsWindow' instead.")]
     [System.Serializable]
     public class PythonConsoleWindow : EditorWindow
     {
@@ -535,6 +536,7 @@ namespace UnityEditor.Scripting.Python
     }
 
     // This is the pop up used in the creation of menu shortcuts upon script saving.
+    [Obsolete]
     [System.Serializable]
     public class CreateMenuItemWindow : EditorWindow, IDisposable
     {

@@ -1,19 +1,16 @@
-using UnityEditor;
-using UnityEditor.PackageManager;
-using UnityEditor.PackageManager.Requests;
-using UnityEngine;
-using Debug = UnityEngine.Debug;
-using Python.Runtime;
 using System;
+using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Runtime.InteropServices;
-using System.Collections.Generic;
-using System.Collections;
-using System.Diagnostics;
-using System.Threading.Tasks;
-using System.Threading;
 using System.Runtime.Serialization;
-using System.Text.RegularExpressions;
+using System.Threading;
+using Python.Runtime;
+using UnityEditor.PackageManager;
+using UnityEditor.PackageManager.Requests;
+using UnityEditor.Scripting.Python.Packages;
+using UnityEngine;
+using Debug = UnityEngine.Debug;
 
 namespace UnityEditor.Scripting.Python
 {
@@ -21,32 +18,32 @@ namespace UnityEditor.Scripting.Python
     /// Exception thrown when Python is installed incorrectly so we can't
     /// run.
     /// </summary>
-    public class PythonInstallException : System.Exception
+    public class PythonInstallException : Exception
     {
         /// <summary>
         /// Parameterless constructor
         /// </summary>
-        public PythonInstallException() : base() {}
+        public PythonInstallException() { }
 
         /// <summary>
         /// Constructor with message
         /// </summary>
         /// <param name="msg">The message of the exception</param>
-        public PythonInstallException(string msg) : base(msg) {}
+        public PythonInstallException(string msg) : base(msg) { }
 
         /// <summary>
         /// Constructor with message and the exception that triggered this exception
         /// </summary>
         /// <param name="msg">The message of the exception</param>
         /// <param name="innerException">The exception that triggered this exception</param>
-        public PythonInstallException(string msg, Exception innerException) : base(msg, innerException) {}
+        public PythonInstallException(string msg, Exception innerException) : base(msg, innerException) { }
 
         /// <summary>
         /// Required because base Exception class is serializable.
         /// </summary>
         /// <param name="info">Serializaiton info</param>
         /// <param name="ctx">Serialization context</param>
-        protected PythonInstallException(SerializationInfo info , StreamingContext ctx) : base(info, ctx) {}
+        protected PythonInstallException(SerializationInfo info, StreamingContext ctx) : base(info, ctx) { }
 
         /// <summary>
         /// The exception's string
@@ -57,7 +54,7 @@ namespace UnityEditor.Scripting.Python
     /// <summary>
     /// This class encapsulates the Unity Editor API support for Python.
     /// </summary>
-    public static class PythonRunner
+    public static class PythonBridge
     {
 #if UNITY_EDITOR_WIN
         const string Platform = "windows";
@@ -78,7 +75,6 @@ namespace UnityEditor.Scripting.Python
         internal const string PythonMajorVersion = "3";
         internal const string PythonMinorVersion = "10";
 
-        static PyModule scope;
 
         internal enum BinariesPackageReleaseType
         {
@@ -115,11 +111,9 @@ namespace UnityEditor.Scripting.Python
             get
             {
                 EnsureInitialized();
-                return System.IO.Path.GetFullPath(PythonSettings.kDefaultPython);
+                return Path.GetFullPath(PythonSettings.kDefaultPython);
             }
         }
-
-        static bool s_IsInitialized = false;
 
         /// <summary>
         /// Verify whether Python has been initialized yet.
@@ -127,56 +121,66 @@ namespace UnityEditor.Scripting.Python
         /// Normally you'd simply call EnsureInitialized without checking. This
         /// access is principally useful when shutting down.
         /// </summary>
-        public static bool IsInitialized
-        {
-            get
-            {
-                return s_IsInitialized;
-            }
-        }
+        public static bool IsInitialized => PythonEngine.IsInitialized;
 
         /// <summary>
-        /// Runs Python code in the Unity process.
+        /// Create a new Python scope.
         /// </summary>
-        /// <param name="pythonCodeToExecute">The code to execute.</param>
         /// <param name="scopeName">Value to write to Python special variable `__name__`</param>
-        public static void RunString(string pythonCodeToExecute, string scopeName = null)
+        /// <returns></returns>
+        /// <exception cref="ArgumentNullException"></exception>
+        public static PyModule CreateScope(string scopeName)
         {
-            if (string.IsNullOrEmpty(pythonCodeToExecute))
-            {
-                return;
-            }
+            if (string.IsNullOrEmpty(scopeName))
+                throw new ArgumentNullException(nameof(scopeName));
 
             EnsureInitialized();
             using (Py.GIL())
             {
-                if (string.IsNullOrEmpty(scopeName))
-                {
-                    PythonEngine.Exec(pythonCodeToExecute);
-                }
-                else
-                {
-                    if (scope == null)
-                        scope = Py.CreateScope();
-
-                    scope.Set("__name__", scopeName);
-                    scope.Exec(pythonCodeToExecute);
-                }
+                PyModule scope = Py.CreateScope();
+                scope.Set("__name__", scopeName);
+                return scope;
             }
         }
 
         /// <summary>
-        /// Runs a Python script in the Unity process.
+        /// Executes Python code in the Unity process.
+        /// </summary>
+        /// <param name="pythonCodeToExecute">The code to execute.</param>
+        /// <param name="scope">The scope to execute the code in. If null, the code will be execute in the global scope.</param>
+        /// <returns>The module object created by the code. Null if no scopeName was provided.</returns>
+        public static PyModule ExecuteString(string pythonCodeToExecute, PyModule scope = null)
+        {
+            if (string.IsNullOrEmpty(pythonCodeToExecute))
+                return null;
+
+            EnsureInitialized();
+
+            using (Py.GIL())
+            {
+                if (scope == null)
+                {
+                    PythonEngine.Exec(pythonCodeToExecute);
+                    return null;
+                }
+
+                scope.Exec(pythonCodeToExecute);
+                return scope;
+            }
+        }
+
+        /// <summary>
+        /// Executes a Python script in the Unity process.
         /// </summary>
         /// <param name="pythonFileToExecute">The script to execute.</param>
-        /// <param name="scopeName">Value to write to Python special variable `__name__`</param>
-        public static void RunFile(string pythonFileToExecute, string scopeName = null)
+        /// <param name="scope">The scope to execute the code in. If null, the code will be execute in the global scope.</param>
+        /// <returns>The module object created by the code. Null if no scopeName was provided.</returns>
+        public static PyModule ExecuteFile(string pythonFileToExecute, PyModule scope = null)
         {
+            if (string.IsNullOrEmpty(pythonFileToExecute))
+                throw new ArgumentNullException(nameof(pythonFileToExecute), "Invalid python file path");
+
             EnsureInitialized();
-            if (null == pythonFileToExecute)
-            {
-                throw new System.ArgumentNullException("pythonFileToExecute", "Invalid (null) file path");
-            }
 
             // Ensure we are getting the full path.
             pythonFileToExecute = Path.GetFullPath(pythonFileToExecute);
@@ -184,25 +188,19 @@ namespace UnityEditor.Scripting.Python
             // Forward slashes please
             pythonFileToExecute = pythonFileToExecute.Replace("\\", "/");
             if (!File.Exists(pythonFileToExecute))
-            {
-                throw new System.IO.FileNotFoundException("No Python file found at " + pythonFileToExecute, pythonFileToExecute);
-            }
+                throw new FileNotFoundException("No Python file found at " + pythonFileToExecute, pythonFileToExecute);
 
             using (Py.GIL())
             {
-                if (string.IsNullOrEmpty(scopeName))
+                if (scope == null)
                 {
-                    PythonEngine.Exec(string.Format("exec(open('{0}').read())", pythonFileToExecute));
+                    PythonEngine.Exec($"exec(open('{pythonFileToExecute}').read())");
+                    return null;
                 }
-                else
-                {
-                    using (PyModule scope = Py.CreateScope())
-                    {
-                        scope.Set("__name__", scopeName);
-                        scope.Set("__file__", pythonFileToExecute);
-                        scope.Exec(string.Format("exec(open('{0}').read())", pythonFileToExecute));
-                    }
-                }
+
+                scope.Set("__file__", pythonFileToExecute);
+                scope.Exec($"exec(open('{pythonFileToExecute}').read())");
+                return scope;
             }
         }
 
@@ -244,7 +242,7 @@ namespace UnityEditor.Scripting.Python
             s_threadState = PythonEngine.BeginAllowThreads();
 
             // And restore it on shutdown.
-            PythonEngine.AddShutdownHandler(() => {PythonEngine.EndAllowThreads(s_threadState);});
+            PythonEngine.AddShutdownHandler(() => { PythonEngine.EndAllowThreads(s_threadState); });
         }
 
         /// <summary>
@@ -270,6 +268,7 @@ namespace UnityEditor.Scripting.Python
             {
                 return;
             }
+
             using (Py.GIL())
             {
                 try
@@ -279,9 +278,10 @@ namespace UnityEditor.Scripting.Python
                 }
                 catch (PythonException e)
                 {
-                    UnityEngine.Debug.LogException(e);
+                    Debug.LogException(e);
                 }
             }
+
             PythonEngine.RemoveShutdownHandler(UndoRedirectStdout);
         }
 
@@ -298,17 +298,17 @@ namespace UnityEditor.Scripting.Python
             {
                 return;
             }
+
             try
             {
                 if (!Application.isBatchMode)
                     EditorUtility.DisplayProgressBar("Python Scripting", "Initializing Python...", 0.5f);
 
-                s_IsInitialized = true;
                 DoEnsureInitialized();
             }
             catch
             {
-                s_IsInitialized = false;
+                PythonEngine.Shutdown();
                 throw;
             }
             finally
@@ -318,23 +318,13 @@ namespace UnityEditor.Scripting.Python
             }
         }
 
-        internal static void DisposeScope()
-        {
-            if (scope == null)
-                return;
-            
-            using (Py.GIL())
-            {
-                scope?.Dispose();
-            }
-            scope = null;
-        }
 
         static class NativeMethods
         {
 #if UNITY_EDITOR_WIN
             [DllImport("kernel32.dll", SetLastError = false, CharSet = CharSet.Unicode)]
             internal static extern IntPtr GetModuleHandle(string lpMpduleName);
+
             internal const string pythonLibraryName = "python" + PythonMajorVersion + PythonMinorVersion;
             internal const string pythonLibPath = PythonSettings.kDefaultPythonDirectory;
             internal const string libExtension = ".dll";
@@ -353,6 +343,7 @@ namespace UnityEditor.Scripting.Python
             internal const string libExtension = "." + dynLibExt;
 #endif
         }
+
         /// <summary>
         /// Used to check if the Python library has been loaded into the memoryspace.
         /// </summary>
@@ -393,7 +384,7 @@ namespace UnityEditor.Scripting.Python
         static bool VerifyPythonInstalled()
         {
 #if UNITY_EDITOR_WIN
-            var site_path = Path.GetFullPath($"{PythonSettings.kDefaultPythonDirectory}/Lib/site.py");
+            string site_path = Path.GetFullPath($"{PythonSettings.kDefaultPythonDirectory}/Lib/site.py");
 #elif UNITY_EDITOR_OSX || UNITY_EDITOR_LINUX
             var site_path = Path.GetFullPath($"{PythonSettings.kDefaultPythonDirectory}/lib/python{PythonMajorVersion}.{PythonMinorVersion}/site.py");
 #endif
@@ -413,10 +404,10 @@ namespace UnityEditor.Scripting.Python
             // are installed in read-only locations on some OSes and if package
             // developers forget to remove their .pyc files it could become
             // problematic. This can be changed at runtime by a script.
-            System.Environment.SetEnvironmentVariable("PYTHONDONTWRITEBYTECODE", "1");
+            Environment.SetEnvironmentVariable("PYTHONDONTWRITEBYTECODE", "1");
 
             // We act like a virtual environment; this means we exclude the USER_SITE.
-            System.Environment.SetEnvironmentVariable("PYTHONNOUSERSITE", "1");
+            Environment.SetEnvironmentVariable("PYTHONNOUSERSITE", "1");
 
             // Pythonnet requires the library to be set *before* the initialization.
             Runtime.PythonDLL = NativeMethods.pythonLibPath + "/" + NativeMethods.pythonLibraryName + NativeMethods.libExtension;
@@ -427,17 +418,18 @@ namespace UnityEditor.Scripting.Python
 
         static string InstalledBinariesVersion()
         {
-            var ret = "0.0.0";
+            string ret = "0.0.0";
 
             if (!File.Exists(VersionFile))
             {
                 return ret;
             }
 
-            using (var reader = new StreamReader(VersionFile))
+            using (StreamReader reader = new StreamReader(VersionFile))
             {
                 ret = reader.ReadToEnd().Trim();
             }
+
             return ret;
         }
 
@@ -450,30 +442,33 @@ namespace UnityEditor.Scripting.Python
         internal static (int, int, int, BinariesPackageReleaseType, int) ConvertVersionToTuple(string version)
         {
             // 1.0.0-exp.1 -> 1, 0, 0-exp, 1
-            var splitVersion = version.Split('.');
+            string[] splitVersion = version.Split('.');
             if (splitVersion.Length < 3)
             {
                 throw new PythonInstallException("Version is not of the form major.minor.patch");
             }
+
             if (!int.TryParse(splitVersion[0], out int major))
             {
                 throw new PythonInstallException("Major of version is not an integer");
             }
+
             if (!int.TryParse(splitVersion[1], out int minor))
             {
                 throw new PythonInstallException("Minor of version is not an integer");
             }
-            var splitPatch = splitVersion[2].Split('-'); // 0-exp becomes 0, exp
+
+            string[] splitPatch = splitVersion[2].Split('-'); // 0-exp becomes 0, exp
             if (!int.TryParse(splitPatch[0], out int patch))
             {
                 throw new PythonInstallException("Patch of version is not an integer");
             }
 
             // if there is no type then it is a release
-            var releaseType = BinariesPackageReleaseType.kRelease;
+            BinariesPackageReleaseType releaseType = BinariesPackageReleaseType.kRelease;
             if (splitPatch.Length > 1)
             {
-                var type = splitPatch[1];
+                string type = splitPatch[1];
                 if (type == "exp")
                 {
                     releaseType = BinariesPackageReleaseType.kExperimental;
@@ -487,14 +482,17 @@ namespace UnityEditor.Scripting.Python
                     throw new PythonInstallException("Failed to parse release type from version");
                 }
             }
+
             if (splitVersion.Length > 3)
             {
                 if (!int.TryParse(splitVersion[3], out int suffix))
                 {
                     throw new PythonInstallException("Version suffix is not an integer");
                 }
+
                 return (major, minor, patch, releaseType, suffix);
             }
+
             return (major, minor, patch, releaseType, 0);
         }
 
@@ -506,8 +504,8 @@ namespace UnityEditor.Scripting.Python
         /// <returns></returns>
         static int BinariesVersionCheck()
         {
-            var installedVersion = ConvertVersionToTuple(InstalledBinariesVersion());
-            var currentVersion = ConvertVersionToTuple(BinariesPackageVersion);
+            (int, int, int, BinariesPackageReleaseType, int) installedVersion = ConvertVersionToTuple(InstalledBinariesVersion());
+            (int, int, int, BinariesPackageReleaseType, int) currentVersion = ConvertVersionToTuple(BinariesPackageVersion);
             return currentVersion.CompareTo(installedVersion);
         }
 
@@ -523,15 +521,16 @@ namespace UnityEditor.Scripting.Python
             ListRequest lreq = Client.List();
             WaitOnRequest(lreq);
 
-            UnityEditor.PackageManager.PackageCollection coll = lreq.Result;
+            PackageCollection coll = lreq.Result;
 
-            foreach (var p in coll)
+            foreach (PackageManager.PackageInfo p in coll)
             {
                 if (p.name == BinariesPackageName)
                 {
                     return (true, p.resolvedPath, p.version);
                 }
             }
+
             return (false, null, null);
         }
 
@@ -544,32 +543,37 @@ namespace UnityEditor.Scripting.Python
         /// False otherwise.</returns>
         internal static bool CanInstallPythonCheck(int versionStatus, bool localPackage)
         {
-            bool needsUpgrade = (versionStatus > 0);
-            bool needsDowngrade = (versionStatus < 0);
+            bool needsUpgrade = versionStatus > 0;
+            bool needsDowngrade = versionStatus < 0;
             // First, check if it needs to be upgraded
             if (!VerifyPythonInstalled())
             {
                 // We need to install
                 return true;
             }
-            else if (versionStatus == 0)
+
+            if (versionStatus == 0)
             {
                 return false; // Nothing to do!
             }
-            else if (needsUpgrade && IsPythonLibraryLoaded())
+
+            if (needsUpgrade && IsPythonLibraryLoaded())
             {
                 Debug.LogWarning("A newer version of the Python Binaries needs to be installed, restart Unity to install.");
                 return false;
             }
-            else if (needsDowngrade)
+
+            if (needsDowngrade)
             {
                 // Downgrade is unlikely to happen and this is mostly a developper warning
                 if (localPackage)
                 {
                     Debug.Log("The current Binaries Python package is a lower version than the installed version");
                 }
+
                 return false;
             }
+
             return true;
         }
 
@@ -577,8 +581,8 @@ namespace UnityEditor.Scripting.Python
         {
             int installedPackageStatus = BinariesVersionCheck();
             string packageLocation = "/dev/null";
-            bool binariesPackageLocal = false;
-            string binariesPackageVersion = null;
+            bool binariesPackageLocal;
+            string binariesPackageVersion;
             (binariesPackageLocal, packageLocation, binariesPackageVersion) = AreBinariesLocal();
             bool needsUpgrade = (installedPackageStatus > 0) && VerifyPythonInstalled();
 
@@ -611,22 +615,23 @@ namespace UnityEditor.Scripting.Python
                 packageLocation = Path.GetFullPath(req.Result.resolvedPath);
                 binariesPackageVersion = req.Result.version;
             }
-            var archiveLocation = $"{packageLocation}/bin~/pybin.7z";
+
+            string archiveLocation = $"{packageLocation}/bin~/pybin.7z";
 
             // Create a process and extract the binaries
-            var proc = new System.Diagnostics.Process();
+            Process proc = new Process();
 #if UNITY_EDITOR_WIN || UNITY_EDITOR_LINUX
             proc.StartInfo.FileName = $"{Path.GetDirectoryName(EditorApplication.applicationPath)}/Data/Tools/{Z7name}";
 #elif UNITY_EDITOR_OSX
             proc.StartInfo.FileName = $"{Path.GetDirectoryName(EditorApplication.applicationPath)}/Unity.app/Contents/Tools/{Z7name}";
 #endif
-            var outputFolder = Path.GetFullPath("Library") + "/PythonInstall";
+            string outputFolder = Path.GetFullPath("Library") + "/PythonInstall";
             //  "`-y`: assume Yes on all queries" Useful when upgrading to overwrite existing files.
-            var args = $"x -y \"{archiveLocation}\" -o\"{outputFolder}\"";
+            string args = $"x -y \"{archiveLocation}\" -o\"{outputFolder}\"";
             proc.StartInfo.Arguments = args;
             proc.StartInfo.UseShellExecute = false;
             proc.StartInfo.RedirectStandardError = true;
-            proc.StartInfo.WorkingDirectory = System.IO.Directory.GetCurrentDirectory();
+            proc.StartInfo.WorkingDirectory = Directory.GetCurrentDirectory();
             Debug.Log($"Unpacking Python using {proc.StartInfo.FileName} {args}");
             proc.Start();
             while (!proc.HasExited)
@@ -634,6 +639,7 @@ namespace UnityEditor.Scripting.Python
                 // Heat the room..
                 Thread.Sleep(1);
             }
+
             if (proc.ExitCode != 0)
             {
                 throw new PythonInstallException($"Extraction of the Python archive failed: {proc.StandardError.ReadToEnd()}");
@@ -651,7 +657,8 @@ namespace UnityEditor.Scripting.Python
             {
                 File.Delete(VersionFile);
             }
-            using (var writer = new StreamWriter(VersionFile))
+
+            using (StreamWriter writer = new StreamWriter(VersionFile))
             {
                 writer.Write(binariesPackageVersion);
             }
@@ -676,6 +683,8 @@ namespace UnityEditor.Scripting.Python
             // Install Python if we haven't yet.
             InstallAndLoadPython();
 
+            // 允许在这里调用 RuntimeData.ClearStash() ？
+
             // Initialize the engine if it hasn't been initialized yet.
             PythonEngine.Initialize();
 
@@ -691,7 +700,7 @@ namespace UnityEditor.Scripting.Python
                 AddToSitePackages(GetExtraSitePackages());
 
                 dynamic sys = Py.Import("sys");
-                var sysPath = sys.GetAttr("path").ToString();
+                dynamic sysPath = sys.GetAttr("path").ToString();
                 // Console.Write writes only to the Editor.log file.
                 Debug.Log($"Python Scripting initialized:\n  version = {PythonEngine.Version}\n  sys.path = {sysPath}\n");
             }
@@ -703,7 +712,7 @@ namespace UnityEditor.Scripting.Python
             // Finally (this should be last!) we're in a stable state -- allow Python threads to run.
             AllowThreads();
 
-            Packages.LoadPipRequirements.LoadRequirements();
+            LoadPipRequirements.LoadRequirements();
         }
 
         /// <summary>
@@ -722,13 +731,14 @@ namespace UnityEditor.Scripting.Python
                 dynamic syspath = sys.GetAttr("path");
                 dynamic pySitePackages = builtins.list();
                 dynamic currentPackages = builtins.set(syspath);
-                foreach (var sitePackage in sitePackages)
+                foreach (string sitePackage in sitePackages)
                 {
                     if (!string.IsNullOrEmpty(sitePackage) && !currentPackages.__contains__(sitePackage))
                     {
                         pySitePackages.append(sitePackage);
                     }
                 }
+
                 pySitePackages += syspath;
                 sys.SetAttr("path", pySitePackages);
             }
@@ -744,7 +754,8 @@ namespace UnityEditor.Scripting.Python
             {
                 return;
             }
-            AddToSitePackages(new string[] {sitePackage});
+
+            AddToSitePackages(new string[] { sitePackage });
         }
 
         /// <summary>
@@ -754,22 +765,23 @@ namespace UnityEditor.Scripting.Python
         /// </summary>
         static List<string> GetExtraSitePackages()
         {
-            var sitePackages = new List<string>();
+            List<string> sitePackages = new List<string>();
 
             // 1. The packages from the settings.
-            foreach (var settingsPackage in PythonSettings.GetSitePackages())
+            foreach (string settingsPackage in PythonSettings.GetSitePackages())
             {
                 if (!string.IsNullOrEmpty(settingsPackage))
                 {
-                    var settingsSitePackage = settingsPackage;
+                    string settingsSitePackage = settingsPackage;
                     // C# can't do tilde expansion. Do a very basic expansion.
                     if (settingsPackage.StartsWith("~"))
                     {
-                        var homeDirectory = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+                        string homeDirectory = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
                         // Don't use Path.Combine here. If settingsPackage starts with a '/', then
                         // settingsPackage will be returned. As per documented behaviour.
                         settingsSitePackage = homeDirectory + "/" + settingsPackage.Substring(1);
                     }
+
                     settingsSitePackage = Path.GetFullPath(settingsSitePackage);
                     settingsSitePackage = settingsSitePackage.Replace("\\", "/");
                     sitePackages.Add(settingsSitePackage);
@@ -782,7 +794,7 @@ namespace UnityEditor.Scripting.Python
             sitePackages.Add(packageSitePackage);
 
             // 3. The ScriptsAssemblies folder so that users can load their own Assemblies (and the ones from the packages)
-            var scriptsAssemblies = Path.GetFullPath("Library/ScriptAssemblies");
+            string scriptsAssemblies = Path.GetFullPath("Library/ScriptAssemblies");
             scriptsAssemblies = scriptsAssemblies.Replace("\\", "/");
             sitePackages.Add(scriptsAssemblies);
 
@@ -799,14 +811,17 @@ namespace UnityEditor.Scripting.Python
             Process proc = null;
             try
             {
-                var currentDirectory = System.IO.Directory.GetCurrentDirectory();
-    #if UNITY_EDITOR_WIN
-                proc = PythonRunner.SpawnProcess("powershell.exe",
-                    new string[] {"-NoLogo", "-NoExit", "-Command", $"cd '{currentDirectory}'\""},
+                string currentDirectory = Directory.GetCurrentDirectory();
+                string procName;
+#if UNITY_EDITOR_WIN
+                procName = "powershell.exe";
+                proc = SpawnProcess(procName,
+                    new string[] { "-NoLogo", "-NoExit", "-Command", $"cd '{currentDirectory}'\"" },
                     showWindow: true,
                     useShell: true);
-    #elif UNITY_EDITOR_OSX
-                proc = PythonRunner.SpawnProcess("osascript",
+#elif UNITY_EDITOR_OSX
+                procName = "osascript";
+                proc = SpawnProcess(procName,
                     null,                              // arguments are passed via stdin
                     showWindow: false,
                     useShell: false,
@@ -820,10 +835,14 @@ namespace UnityEditor.Scripting.Python
                     );
                     proc.StandardInput.Close();
                 }
-    #endif
-                if (proc == null || (proc.HasExited && proc.ExitCode != 0))
+#endif
+                if (proc == null)
                 {
-                    Debug.LogError($"Unable to open terminal: {proc.StartInfo.FileName} exited with error code {proc.ExitCode}");
+                    Debug.LogError($"Unable to open terminal: {procName}");
+                }
+                else if (proc.HasExited && proc.ExitCode != 0)
+                {
+                    Debug.LogError($"Unable to open terminal: {procName} exited with error code {proc.ExitCode}");
                 }
             }
             finally
@@ -880,26 +899,24 @@ namespace UnityEditor.Scripting.Python
             bool redirectInput = false
         )
         {
-            string newPath = "";
             // don't modify this one!
-            var oldPath = System.Environment.GetEnvironmentVariable("PATH");
-            var oldEnv = new Dictionary<string, string>();
-            var currentDirectory = System.IO.Directory.GetCurrentDirectory();
-            var pythonBinPath = Directory.GetCurrentDirectory() + "/Library/PythonInstall";
+            string oldPath = Environment.GetEnvironmentVariable("PATH");
+            Dictionary<string, string> oldEnv = new Dictionary<string, string>();
+            string pythonBinPath = Directory.GetCurrentDirectory() + "/Library/PythonInstall";
             try
             {
                 if (environment != null)
                 {
-                    foreach (var kpv in environment)
+                    foreach (KeyValuePair<string, string> kpv in environment)
                     {
                         // GetEnvironmentVariable returns null if the variable is not set.
                         // we'll use that to unset/reset the envvar later.
-                        oldEnv.Add(kpv.Key, System.Environment.GetEnvironmentVariable(kpv.Key));
-                        System.Environment.SetEnvironmentVariable(kpv.Key, kpv.Value);
+                        oldEnv.Add(kpv.Key, Environment.GetEnvironmentVariable(kpv.Key));
+                        Environment.SetEnvironmentVariable(kpv.Key, kpv.Value);
                     }
                 }
 
-                var process = new Process();
+                Process process = new Process();
                 process.StartInfo.CreateNoWindow = !showWindow;
                 process.StartInfo.UseShellExecute = useShell;
                 process.StartInfo.RedirectStandardInput = redirectInput;
@@ -911,16 +928,17 @@ namespace UnityEditor.Scripting.Python
                 {
                     process.StartInfo.Arguments = string.Join(" ", arguments);
                 }
+
                 // set the python's executable location as first entry
-                newPath = pythonBinPath;
+                string newPath = pythonBinPath;
 #if UNITY_EDITOR_WIN
                 // on windows, add the Scripts directory second
-                var pythonScripts = Path.Combine(pythonBinPath, "Scripts");
+                string pythonScripts = Path.Combine(pythonBinPath, "Scripts");
                 newPath += Path.PathSeparator + pythonScripts;
 #endif
                 // and add the rest of the PATH
                 // get the value from the environment, as the caller may have set the PATH in the loop above.
-                newPath += Path.PathSeparator + System.Environment.GetEnvironmentVariable("PATH");
+                newPath += Path.PathSeparator + Environment.GetEnvironmentVariable("PATH");
                 Environment.SetEnvironmentVariable("PATH", newPath);
                 process.Start();
                 return process;
@@ -933,11 +951,12 @@ namespace UnityEditor.Scripting.Python
             finally
             {
                 // reset the environment.
-                foreach (var kpv in oldEnv)
+                foreach (KeyValuePair<string, string> kpv in oldEnv)
                 {
                     // a null value deletes the environment variable.
-                    System.Environment.SetEnvironmentVariable(kpv.Key, kpv.Value);
+                    Environment.SetEnvironmentVariable(kpv.Key, kpv.Value);
                 }
+
                 Environment.SetEnvironmentVariable("PATH", oldPath);
             }
         }

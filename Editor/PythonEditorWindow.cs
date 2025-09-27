@@ -88,8 +88,8 @@ namespace UnityEditor.Scripting.Python
                 }
             }
 
-            PythonRunner.EnsureInitialized();
-            PythonRunner.RunFile(pythonScriptPath);
+            PythonBridge.EnsureInitialized();
+            PythonBridge.ExecuteFile(pythonScriptPath);
             PyInitHandler?.Invoke();
         }
 
@@ -98,8 +98,8 @@ namespace UnityEditor.Scripting.Python
             // 编译后恢复
             if (WindowID != null && PythonScriptPath != null)
             {
-                PythonRunner.EnsureInitialized();
-                PythonRunner.RunFile(PythonScriptPath);
+                PythonBridge.EnsureInitialized();
+                PythonBridge.ExecuteFile(PythonScriptPath);
                 PyInitHandler?.Invoke();
             }
         }
@@ -125,7 +125,7 @@ namespace UnityEditor.Scripting.Python
             menu.AddItem(new GUIContent("Reload Python Script"), false, () =>
             {
                 PyCleanHandler?.Invoke();
-                PythonRunner.RunFile(PythonScriptPath);
+                PythonBridge.ExecuteFile(PythonScriptPath);
                 PyInitHandler?.Invoke();
             });
         }

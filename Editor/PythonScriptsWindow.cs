@@ -25,6 +25,7 @@ namespace UnityEditor.Scripting.Python
 
         internal static string PythonScriptFolder => PythonSettings.GetPythonScriptFolder();
 
+
         internal bool IsScriptEditorSelected => _scriptPath == string.Empty;
         internal bool IsExecutableSelected => _scriptPath != null;
 
@@ -70,7 +71,8 @@ namespace UnityEditor.Scripting.Python
 
         private void RefreshPythonScripts()
         {
-            _scriptTreeContainer.SetScriptFolder(PythonScriptFolder, true);
+            _pythonScriptSettings = null;
+            _scriptTreeContainer.SetScriptFolder(PythonScriptFolder, true, PreparePythonScriptSettings());
             OnPythonScriptSelected(_scriptPath);
         }
 
@@ -138,7 +140,12 @@ namespace UnityEditor.Scripting.Python
             {
                 try
                 {
-                    PythonRunner.RunFile(_scriptPath);
+                    string scopeName = !TryGetPythonScriptSpec(_scriptPath, out ScriptSpec spec) || string.IsNullOrEmpty(spec.Scope)
+                        ? MainPythonScopeName
+                        : spec.Scope;
+                    PyModule scope = GetPythonScope(scopeName, true);
+                    Debug.Log($"Execute python script in scope '{scopeName}' : {_scriptPath}");
+                    PythonBridge.ExecuteFile(_scriptPath, scope);
                 }
                 catch (PythonException pyEx)
                 {
@@ -158,7 +165,9 @@ namespace UnityEditor.Scripting.Python
             string code = _scriptTextField.value;
             try
             {
-                PythonRunner.RunString(code, "__main__");
+                PyModule scope = GetPythonScope(MainPythonScopeName, true);
+                Debug.Log($"Execute python code in scope '{MainPythonScopeName}' :\n {code}");
+                PythonBridge.ExecuteString(code, scope);
             }
             catch (PythonException pyEx)
             {
@@ -222,7 +231,7 @@ namespace UnityEditor.Scripting.Python
         private static readonly int _pythonOutputsCapacity = 100 * 2; // 其中一半是Python自动输出的换行符
         private readonly Queue<string> _pythonOutputs = new Queue<string>(_pythonOutputsCapacity);
         private readonly StringBuilder _pythonOutputBuilder = new StringBuilder();
-        [NonSerialized] // 避免重编代码后恢复窗口时出发滚动到底，导致文本框异常上移
+        [NonSerialized] // 避免重编代码后恢复窗口时触发滚动到底，导致文本框异常上移
         private bool _pythonOutputChanged;
 
 

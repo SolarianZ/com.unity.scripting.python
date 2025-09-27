@@ -10,6 +10,7 @@ using TreeView = UnityEditor.IMGUI.Controls.TreeView;
 
 namespace UnityEditor.Scripting.Python
 {
+    // GUI
     partial class PythonScriptsWindow
     {
         private ScriptTreeViewContainer _scriptTreeContainer;
@@ -73,7 +74,7 @@ namespace UnityEditor.Scripting.Python
                 name = "script-tree-container"
             };
             _scriptTreeContainer.ScriptSelected += OnPythonScriptSelected;
-            _scriptTreeContainer.SetScriptFolder(PythonScriptFolder, false);
+            _scriptTreeContainer.SetScriptFolder(PythonScriptFolder, false, PreparePythonScriptSettings());
             horizontalSplitView.Add(_scriptTreeContainer);
 
             #endregion
@@ -367,9 +368,9 @@ namespace UnityEditor.Scripting.Python
             _treeView.SelectScriptEditor();
         }
 
-        public void SetScriptFolder(string scriptFolder, bool keepSelection)
+        public void SetScriptFolder(string scriptFolder, bool keepSelection, PythonScriptSettings pythonScriptSettings)
         {
-            _treeView.SetScriptFolder(scriptFolder, keepSelection);
+            _treeView.SetScriptFolder(scriptFolder, keepSelection, pythonScriptSettings);
         }
 
         public void Refresh()
@@ -392,6 +393,7 @@ namespace UnityEditor.Scripting.Python
 
             private readonly Dictionary<int, string> _id2Path = new Dictionary<int, string>();
             private string _scriptFolder;
+            private PythonScriptSettings _pythonScriptSettings;
 
 
             /// <inheritdoc />
@@ -402,10 +404,11 @@ namespace UnityEditor.Scripting.Python
                 SetSelection(new int[] { ScriptEditorID }, TreeViewSelectionOptions.FireSelectionChanged);
             }
 
-            public void SetScriptFolder(string scriptFolder, bool keepSelection)
+            public void SetScriptFolder(string scriptFolder, bool keepSelection, PythonScriptSettings pythonScriptSettings)
             {
                 IList<int> selection = keepSelection ? GetSelection() : null;
                 _scriptFolder = scriptFolder;
+                _pythonScriptSettings = pythonScriptSettings;
                 SetSelection(Array.Empty<int>(), TreeViewSelectionOptions.FireSelectionChanged);
                 Reload();
 
@@ -438,15 +441,20 @@ namespace UnityEditor.Scripting.Python
                 root.AddChild(scriptEditorItem);
 
                 int nextID = ScriptEditorID + 1;
-                BuildScriptHierarchy(_id2Path, root, _scriptFolder, ref nextID);
+                BuildScriptHierarchy(_id2Path, root, _scriptFolder, ref nextID, _pythonScriptSettings);
 
                 SetupDepthsFromParentsAndChildren(root);
                 return root;
             }
 
-            private static void BuildScriptHierarchy(Dictionary<int, string> id2Path, TreeViewItem parent, string folder, ref int nextID)
+            private static void BuildScriptHierarchy(Dictionary<int, string> id2Path, TreeViewItem parent, string folder,
+                ref int nextID, PythonScriptSettings pythonScriptSettings)
             {
                 if (!Directory.Exists(folder))
+                    return;
+
+                // Ignore hidden folders
+                if (Path.GetFileName(folder).StartsWith("."))
                     return;
 
                 string[] pyFiles = Directory.GetFiles(folder, "*.py", SearchOption.TopDirectoryOnly);
@@ -463,7 +471,6 @@ namespace UnityEditor.Scripting.Python
                 {
                     displayName = folderName
                 };
-                // id2Path.Add(nextID, folder);
                 parent.AddChild(folderItem);
                 nextID++;
 
@@ -471,17 +478,21 @@ namespace UnityEditor.Scripting.Python
                 string[] subFolders = Directory.GetDirectories(folder, "*", SearchOption.TopDirectoryOnly);
                 foreach (string subFolder in subFolders)
                 {
-                    BuildScriptHierarchy(id2Path, folderItem, subFolder, ref nextID);
+                    BuildScriptHierarchy(id2Path, folderItem, subFolder, ref nextID, pythonScriptSettings);
                 }
 
                 // Direct files
                 foreach (string pyFile in pyFiles)
                 {
-                    string fileName = Path.GetFileNameWithoutExtension(pyFile);
-                    TreeViewItem fileItem = new TreeViewItem(nextID)
-                    {
-                        displayName = fileName
-                    };
+                    string displayName;
+                    if (pythonScriptSettings != null &&
+                        pythonScriptSettings.TryGetScriptSpec(pyFile, out ScriptSpec staticSpec) &&
+                        !string.IsNullOrEmpty(staticSpec.DisplayName))
+                        displayName = staticSpec.DisplayName;
+                    else
+                        displayName = Path.GetFileNameWithoutExtension(pyFile);
+
+                    TreeViewItem fileItem = new TreeViewItem(nextID) { displayName = displayName, };
                     id2Path.Add(nextID, pyFile);
                     folderItem.AddChild(fileItem);
                     nextID++;

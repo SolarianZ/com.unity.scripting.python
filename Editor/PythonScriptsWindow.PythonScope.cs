@@ -3,15 +3,14 @@ using Python.Runtime;
 
 namespace UnityEditor.Scripting.Python
 {
-    public partial class PythonScriptsWindow
+    // Python Scope
+    partial class PythonScriptsWindow
     {
-        #region Scopes
-
         public const string MainPythonScopeName = "__main__";
         private static PyModule _mainPythonScope;
         private static readonly Dictionary<string, PyModule> _scopes = new Dictionary<string, PyModule>();
 
-        public static PyModule GetPythonScope(string scopeName)
+        public static PyModule GetPythonScope(string scopeName, bool createIfNotExist)
         {
             if (scopeName == null)
                 return null;
@@ -19,12 +18,17 @@ namespace UnityEditor.Scripting.Python
             if (_scopes.TryGetValue(scopeName, out PyModule scope))
                 return scope;
 
-            return null;
+            if (!createIfNotExist)
+                return null;
+
+            scope = PythonBridge.CreateScope(scopeName);
+            _scopes.Add(scopeName, scope);
+            return scope;
         }
 
         public static bool DisposePythonScope(string scopeName)
         {
-            PyModule scope = GetPythonScope(scopeName);
+            PyModule scope = GetPythonScope(scopeName, false);
             if (scope == null)
                 return false;
 
@@ -47,7 +51,5 @@ namespace UnityEditor.Scripting.Python
             _mainPythonScope = null;
             _scopes.Clear();
         }
-
-        #endregion
     }
 }

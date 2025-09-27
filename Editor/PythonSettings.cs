@@ -130,7 +130,7 @@ namespace UnityEditor.Scripting.Python
         internal static void ApplyChanges()
         {
             var sitePackages = GetSitePackages();
-            PythonRunner.AddToSitePackages(sitePackages);
+            PythonBridge.AddToSitePackages(sitePackages);
         }
 
         string[] m_originalSitePackages; // To track changes that require a restart
@@ -275,8 +275,8 @@ namespace UnityEditor.Scripting.Python
             EditorGUILayout.LabelField("Package: " + PythonSettings.Version);
 
             EditorGUILayout.LabelField(
-                new GUIContent("Python: " + ShortPythonVersion(PythonRunner.PythonVersion),
-                    "Python Scripting is running Python version " + PythonRunner.PythonVersion));
+                new GUIContent("Python: " + ShortPythonVersion(PythonBridge.PythonVersion),
+                    "Python Scripting is running Python version " + PythonBridge.PythonVersion));
 
             EditorGUILayout.LabelField(
                 new GUIContent("Python for .NET: " + PythonSettings.PythonNetVersion,
@@ -419,7 +419,7 @@ namespace UnityEditor.Scripting.Python
                         "\n\nUse the Terminal to install Python modules and packages with pip, for example."),
                     GUILayout.Width(125)))
             {
-                PythonRunner.SpawnShell();
+                PythonBridge.SpawnShell();
             }
 #endif
 
