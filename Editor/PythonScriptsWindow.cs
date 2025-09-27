@@ -39,13 +39,13 @@ namespace UnityEditor.Scripting.Python
 
         private void OnEnable()
         {
-            PythonStdoutBroadcaster.OnPythonStdout -= RecordPythonOutput;
-            PythonStdoutBroadcaster.OnPythonStdout += RecordPythonOutput;
+            PythonBridge.OnPythonStdout -= RecordPythonOutput;
+            PythonBridge.OnPythonStdout += RecordPythonOutput;
         }
 
         private void OnDisable()
         {
-            PythonStdoutBroadcaster.OnPythonStdout -= RecordPythonOutput;
+            PythonBridge.OnPythonStdout -= RecordPythonOutput;
 
             SaveScriptTreeViewState();
         }

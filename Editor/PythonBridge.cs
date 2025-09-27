@@ -318,6 +318,21 @@ namespace UnityEditor.Scripting.Python
             }
         }
 
+        
+        public static event Action<string> OnPythonStdout;
+
+        public static void BroadcastPythonStdout(string content)
+        {
+            try
+            {
+                OnPythonStdout?.Invoke(content);
+            }
+            catch (Exception ex)
+            {
+                Debug.LogException(ex);
+            }
+        }
+        
 
         static class NativeMethods
         {

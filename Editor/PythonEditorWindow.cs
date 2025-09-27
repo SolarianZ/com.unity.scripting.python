@@ -135,7 +135,7 @@ namespace UnityEditor.Scripting.Python
         }
 
 
-#if UNITY_2020_2_OR_NEWER
+#if UNITY_2021_3_OR_NEWER
         public override void SaveChanges()
         {
             PySaveChangesHandler?.Invoke();

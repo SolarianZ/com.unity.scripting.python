@@ -185,8 +185,8 @@ namespace UnityEditor.Scripting.Python
             // will never go to the console output.
             s_window = this;
             
-            PythonStdoutBroadcaster.OnPythonStdout -= AddToOutput;
-            PythonStdoutBroadcaster.OnPythonStdout += AddToOutput;
+            PythonBridge.OnPythonStdout -= AddToOutput;
+            PythonBridge.OnPythonStdout += AddToOutput;
         }
 
         #endregion
@@ -425,7 +425,7 @@ namespace UnityEditor.Scripting.Python
 
         private void OnDisable()
         {
-            PythonStdoutBroadcaster.OnPythonStdout -= AddToOutput;
+            PythonBridge.OnPythonStdout -= AddToOutput;
             PythonRunner.DisposeScope();
         }
 
