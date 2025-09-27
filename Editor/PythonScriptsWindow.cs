@@ -45,7 +45,6 @@ namespace UnityEditor.Scripting.Python
         private void OnDisable()
         {
             PythonStdoutBroadcaster.OnPythonStdout -= RecordPythonOutput;
-            PythonRunner.DisposeScope();
 
             SaveScriptTreeViewState();
         }
