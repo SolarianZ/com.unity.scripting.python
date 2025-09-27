@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using Python.Runtime;
 using UnityEngine;
 
 namespace UnityEditor.Scripting.Python
@@ -9,7 +10,7 @@ namespace UnityEditor.Scripting.Python
     public class PythonEditorWindow : EditorWindow, IHasCustomMenu
     {
         public static PythonEditorWindow Open(GUIContent windowTitle, string windowID, string pythonScriptPath,
-            IDictionary<string, object> userData = null)
+            IDictionary<string, object> userData = null, PyModule scope = null, bool disposeScopeOnDestroy = false)
         {
             if (windowID == null)
                 throw new InvalidOperationException("Window ID cannot be null.");
@@ -22,12 +23,13 @@ namespace UnityEditor.Scripting.Python
             if (!window)
                 window = CreateWindow<PythonEditorWindow>();
             window.titleContent = windowTitle ?? new GUIContent(windowID);
-            window.PyInit(windowID, pythonScriptPath, userData);
+            window.PyInit(windowID, pythonScriptPath, userData, scope, disposeScopeOnDestroy);
             return window;
         }
 
         public static T Open<T>(GUIContent windowTitle, string windowID, string pythonScriptPath,
-            IDictionary<string, object> userData = null) where T : PythonEditorWindow
+            IDictionary<string, object> userData = null, PyModule scope = null, bool disposeScopeOnDestroy = false)
+            where T : PythonEditorWindow
         {
             if (windowID == null)
                 throw new InvalidOperationException("Window ID cannot be null.");
@@ -43,7 +45,7 @@ namespace UnityEditor.Scripting.Python
                 throw new InvalidOperationException($"Window ID '{windowID}' is already used by another window type '{window.GetType().FullName}'.");
 
             window.titleContent = windowTitle ?? new GUIContent(windowID);
-            window.PyInit(windowID, pythonScriptPath, userData);
+            window.PyInit(windowID, pythonScriptPath, userData, scope, disposeScopeOnDestroy);
             return (T)window;
         }
 
@@ -62,34 +64,47 @@ namespace UnityEditor.Scripting.Python
         private string _windowID;
         [SerializeField, HideInInspector]
         private string _pythonScriptPath;
+        private IDictionary<string, object> _userData;
+        private PyModule _scope;
+        [SerializeField, HideInInspector]
+        private bool _disposeScopeOnDestroy;
 
         public string WindowID => _windowID;
         public string PythonScriptPath => _pythonScriptPath;
-        // ReSharper disable once CollectionNeverQueried.Global
-        public readonly IDictionary<string, object> UserData = new Dictionary<string, object>();
+        public IDictionary<string, object> UserData
+        {
+            get
+            {
+                _userData = _userData ?? new Dictionary<string, object>();
+                return _userData;
+            }
+        }
 
-        public Action PyInitHandler;
+        public Action PyInitHandler; // OnEnable
+        public Action PyCreateGUIHandler;
         public Action PyUpdateHandler;
         public Action PyOnGUIHandler;
-        public Action PyCleanHandler;
+        public Action<Rect> PyShowButtonHandler;
+        public Action PyOnFocusHandler;
+        public Action PyOnLostFocusHandler;
+        public Action PyOnDisableHandler;
+        public Action PyCleanHandler; // OnDestroy
+#if UNITY_2020_2_OR_NEWER
+        public Action PySaveChangesHandler;
+        public Action PyDiscardChangesHandler;
+#endif
 
 
-        private void PyInit(string windowID, string pythonScriptPath, IDictionary<string, object> userData)
+        private void PyInit(string windowID, string pythonScriptPath,
+            IDictionary<string, object> userData, PyModule scope, bool disposeScopeOnDestroy)
         {
             _windowID = windowID;
             _pythonScriptPath = pythonScriptPath;
+            _userData = userData ?? _userData;
+            _scope = scope;
+            _disposeScopeOnDestroy = disposeScopeOnDestroy;
 
-            if (userData != null)
-            {
-                UserData.Clear();
-                foreach (KeyValuePair<string, object> kvp in userData)
-                {
-                    UserData.Add(kvp.Key, kvp.Value);
-                }
-            }
-
-            PythonBridge.EnsureInitialized();
-            PythonBridge.ExecuteFile(pythonScriptPath);
+            PythonBridge.ExecuteFile(pythonScriptPath, scope);
             PyInitHandler?.Invoke();
         }
 
@@ -98,26 +113,42 @@ namespace UnityEditor.Scripting.Python
             // 编译后恢复
             if (WindowID != null && PythonScriptPath != null)
             {
-                PythonBridge.EnsureInitialized();
-                PythonBridge.ExecuteFile(PythonScriptPath);
+                PythonBridge.ExecuteFile(PythonScriptPath, _scope);
                 PyInitHandler?.Invoke();
             }
         }
 
-        protected virtual void Update()
-        {
-            PyUpdateHandler?.Invoke();
-        }
+        protected virtual void CreateGUI() => PyCreateGUIHandler?.Invoke();
+        protected virtual void Update() => PyUpdateHandler?.Invoke();
+        protected virtual void OnGUI() => PyOnGUIHandler?.Invoke();
+        protected virtual void ShowButton(Rect rect) => PyShowButtonHandler?.Invoke(rect);
+        protected virtual void OnFocus() => PyOnFocusHandler?.Invoke();
+        protected virtual void OnLostFocus() => PyOnLostFocusHandler?.Invoke();
+        protected virtual void OnDisable() => PyOnDisableHandler?.Invoke();
 
-        protected virtual void OnGUI()
-        {
-            PyOnGUIHandler?.Invoke();
-        }
-
-        protected virtual void OnDisable()
+        protected virtual void OnDestroy()
         {
             PyCleanHandler?.Invoke();
+
+            if (_disposeScopeOnDestroy)
+                _scope?.Dispose();
         }
+
+
+#if UNITY_2020_2_OR_NEWER
+        public override void SaveChanges()
+        {
+            PySaveChangesHandler?.Invoke();
+            base.SaveChanges();
+        }
+
+        public override void DiscardChanges()
+        {
+            PyDiscardChangesHandler?.Invoke();
+            base.DiscardChanges();
+        }
+#endif
+
 
         /// <inheritdoc />
         public virtual void AddItemsToMenu(GenericMenu menu)
