@@ -1,9 +1,11 @@
+using System;
 using UnityEngine;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
 using Python.Runtime;
 using System.Runtime.CompilerServices;
+using UnityEditor.VersionControl;
 
 [assembly: InternalsVisibleTo("PythonRunnerTests")]
 
@@ -19,8 +21,8 @@ namespace UnityEditor.Scripting.Python
         /// <summary>
         /// Current project directory, with a trailing slash
         /// </summary>
-        static readonly string projectRoot = Regex.Replace(Directory.GetCurrentDirectory(), "\\\\", "/") + '/';
-        const string PreferencesPath = "ProjectSettings/PythonSettings.asset";
+        internal static readonly string projectRoot = Directory.GetCurrentDirectory().Replace('\\', '/') + '/';
+        internal const string PreferencesPath = "ProjectSettings/PythonSettings.asset";
 
         /// <summary>
         /// Location where Python will be installed, relative to the project path.
@@ -92,11 +94,24 @@ namespace UnityEditor.Scripting.Python
         }
 
         [SerializeField]
-        string m_pythonScriptFolder;
+        private string m_pythonScriptFolder;
 
         public static string GetPythonScriptFolder()
         {
-            return Instance.m_pythonScriptFolder;
+            string folder = GetFullPath(Instance.m_pythonScriptFolder);
+            return folder;
+        }
+
+        internal static string GetFullPath(string path)
+        {
+            if(string.IsNullOrWhiteSpace(path))
+                return path;
+
+            if (Path.IsPathRooted(path))
+                return path;
+
+            string fullPath = Path.GetFullPath(Path.Combine(projectRoot, path));
+            return fullPath;
         }
         
         
@@ -105,7 +120,7 @@ namespace UnityEditor.Scripting.Python
         /// Set via the serializedObject workflow.
         #pragma warning disable 0649
         [SerializeField]
-        string[] m_sitePackages = new string[] {};
+        private string[] m_sitePackages = new string[] {};
         #pragma warning restore 0649
 
         /// <summary>
@@ -172,7 +187,7 @@ namespace UnityEditor.Scripting.Python
                 return s_Instance;
             }
         }
-        static PythonSettings s_Instance;
+        private static PythonSettings s_Instance;
 
         PythonSettings()
         {
@@ -198,6 +213,9 @@ namespace UnityEditor.Scripting.Python
             {
                 Directory.CreateDirectory(dirName);
             }
+            
+            if(File.Exists(PreferencesPath) && Provider.isActive)
+                Provider.Checkout(PreferencesPath, CheckoutMode.Asset).Wait();
             File.WriteAllText(PreferencesPath, EditorJsonUtility.ToJson(s_Instance, true));
         }
     }
@@ -294,8 +312,9 @@ namespace UnityEditor.Scripting.Python
 
             var pythonScriptFolderProp = serializedObject.FindProperty("m_pythonScriptFolder");
             var pythonScriptFolderValue = pythonScriptFolderProp.stringValue;
-            
-            if(!Directory.Exists(pythonScriptFolderValue))
+
+            var pythonScriptFolderFullPath = PythonSettings.GetFullPath(pythonScriptFolderValue);
+            if(!Directory.Exists(pythonScriptFolderFullPath))
                 EditorGUILayout.HelpBox("Python script directory does not exist!", MessageType.Error);            
 
             using (new EditorGUILayout.HorizontalScope())
@@ -314,12 +333,16 @@ namespace UnityEditor.Scripting.Python
                 if (GUILayout.Button(EditorGUIUtility.IconContent("folderopened icon"), GUILayout.Width(28), GUILayout.Height(EditorGUIUtility.singleLineHeight)))
                 {
                     string currentDir = string.IsNullOrEmpty(pythonScriptFolderValue)
-                        ? Application.dataPath
+                        ? PythonSettings.projectRoot
                         : pythonScriptFolderValue;
                     string pythonScriptDir = EditorUtility.OpenFolderPanel("Select Python Script Directory",
                         currentDir, null);
                     if (!string.IsNullOrEmpty(pythonScriptDir) && pythonScriptDir != pythonScriptFolderValue)
                     {
+                        pythonScriptDir = pythonScriptDir.Replace('\\', '/');
+                        if(pythonScriptDir.StartsWith(PythonSettings.projectRoot, StringComparison.OrdinalIgnoreCase))
+                            pythonScriptDir = pythonScriptDir.Substring(PythonSettings.projectRoot.Length);
+                        
                         pythonScriptFolderProp.stringValue = pythonScriptDir;
                         changesPending = true;
                     }

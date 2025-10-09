@@ -194,12 +194,12 @@ namespace UnityEditor.Scripting.Python
             {
                 if (scope == null)
                 {
-                    PythonEngine.Exec($"exec(open('{pythonFileToExecute}').read())");
+                    PythonEngine.Exec($"exec(open('{pythonFileToExecute}', 'r', encoding='utf-8').read())");
                     return null;
                 }
 
                 scope.Set("__file__", pythonFileToExecute);
-                scope.Exec($"exec(open('{pythonFileToExecute}').read())");
+                scope.Exec($"exec(open('{pythonFileToExecute}', 'r', encoding='utf-8').read())");
                 return scope;
             }
         }
@@ -318,7 +318,7 @@ namespace UnityEditor.Scripting.Python
             }
         }
 
-        
+
         public static event Action<string> OnPythonStdout;
 
         public static void BroadcastPythonStdout(string content)
@@ -332,7 +332,7 @@ namespace UnityEditor.Scripting.Python
                 Debug.LogException(ex);
             }
         }
-        
+
 
         static class NativeMethods
         {

@@ -20,7 +20,7 @@ This package is based on Unity's official [com.unity.scripting.python](https://d
 
 ### Changed
 
-  - **Delayed Initialization**: Python initialization is deferred until its first use, speeding up editor reload times after C\# script compilation.
+  - **Delayed Initialization**: Python initialization is deferred until its first use, speeding up editor reload times after C# script compilation.
   - **Version Compatibility**: Lowered the minimum required Unity version to 2019.4.
   - **Output Redirection**: Changed the redirection target of Python's `sys.stdout` from `PythonConsoleWindow.AddToOutput` to `PythonStdoutBroadcaster.BroadcastPythonStdout`. 
 

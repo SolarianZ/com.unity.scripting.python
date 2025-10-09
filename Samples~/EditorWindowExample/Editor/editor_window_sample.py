@@ -1,8 +1,8 @@
 from typing import Optional
-from UnityEngine import *
+from UnityEngine import GUILayout
 from UnityEngine import Debug as UDebug
 from UnityEngine import Object as UObject
-from UnityEditor import *
+from UnityEditor import EditorGUI, EditorGUILayout, EditorStyles, EditorGUIUtility, EditorUtility
 from System import Action
 from UnityEditor.Scripting.Python import PythonEditorWindow
 

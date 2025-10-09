@@ -4,16 +4,20 @@ All notable changes to this package will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [7.2.3] - TBD
+## [7.2.3] - 2025-10-09
 ### Added
 * Added PDB file and XML documentation file for Python.Runtime.dll
 * Added `PythonBridge` class, replacing `PythonStdoutBroadcaster` and `PythonRunner` classes
 * Added `PythonScriptSettings` to configure display name and scope for Python scripts
 * Python Scripts Window no longer displays Python scripts located in folders starting with `.` within the Python scripts folder
+* PythonScriptFolder supports configuration via relative paths.
+* Attempt to check out when saving PythonSettings.
 
 ### Changed
 * Generated stubs for all assemblies returned by `AppDomain.CurrentDomain.GetAssemblies()`
 * Added `ObsoleteAttribute` to `PythonRunner` and `PythonConsoleWindow`
+* When executing Python script files, forcibly read the script code using UTF-8 encoding.
+* In `editor_window_example.py`, avoid using `import *` (as it slows down window opening).
 
 ## [7.2.2] - 2025-09-22
 ### Added
