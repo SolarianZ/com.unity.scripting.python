@@ -581,8 +581,40 @@ namespace UnityEditor.Scripting.Python
                 if (PythonScriptsWindow.IsVSCodeAvailable())
                     menu.AddItem(new GUIContent("Open in Visual Studio Code"), false, () => PythonScriptsWindow.OpenPythonScriptInVSCode(scriptPath));
                 menu.AddItem(new GUIContent("Show in Folder"), false, () => EditorUtility.RevealInFinder(scriptPath));
+                // menu.AddItem(new GUIContent("Set Alias"), false, () => SetAlias(id));
                 menu.ShowAsContext();
             }
+
+            /*
+            private void SetAlias(int id)
+            {
+                if (_id2Path.TryGetValue(id, out string scriptPath) && !string.IsNullOrEmpty(scriptPath))
+                {
+                    TreeViewItem targetItem = FindItem(id, rootItem);
+                    BeginRename(targetItem);
+                }
+            }
+
+            // ReSharper disable once RedundantOverriddenMember
+            // [ScriptTreeView: If you are overriding RenameEnded you should also override CanRename (to allow renaming).]
+            /// <inheritdoc />
+            protected override bool CanRename(TreeViewItem item) => base.CanRename(item);
+
+            /// <inheritdoc />
+            protected override void RenameEnded(RenameEndedArgs args)
+            {
+                base.RenameEnded(args);
+
+                if (!args.acceptedRename || args.newName == args.originalName)
+                    return;
+
+                TreeViewItem targetItem = FindItem(args.itemID, rootItem);
+                targetItem.displayName = args.newName;
+
+                string scriptPath = _id2Path[args.itemID];
+                ScriptAliased?.Invoke(scriptPath, args.newName);
+            }
+            */
 
             private void SelectScript(int id)
             {

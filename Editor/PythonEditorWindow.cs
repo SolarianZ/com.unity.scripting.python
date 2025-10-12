@@ -12,22 +12,25 @@ namespace UnityEditor.Scripting.Python
         public static PythonEditorWindow Open(GUIContent windowTitle, string windowID, string pythonScriptPath,
             IDictionary<string, object> userData = null, PyModule scope = null, bool disposeScopeOnDestroy = false)
         {
-            if (windowID == null)
-                throw new InvalidOperationException("Window ID cannot be null.");
-            if (pythonScriptPath == null)
-                throw new InvalidOperationException("Python script path cannot be null.");
-            if (!File.Exists(pythonScriptPath))
-                throw new InvalidOperationException($"Python script path does not exist: {pythonScriptPath}");
-
-            PythonEditorWindow window = GetWindowByID(windowID);
-            if (!window)
-                window = CreateWindow<PythonEditorWindow>();
-            window.titleContent = windowTitle ?? new GUIContent(windowID);
-            window.PyInit(windowID, pythonScriptPath, userData, scope, disposeScopeOnDestroy);
+            PythonEditorWindow window = Open<PythonEditorWindow>(windowTitle, windowID, pythonScriptPath, userData, scope, disposeScopeOnDestroy);
             return window;
         }
 
         public static T Open<T>(GUIContent windowTitle, string windowID, string pythonScriptPath,
+            IDictionary<string, object> userData = null, PyModule scope = null, bool disposeScopeOnDestroy = false)
+            where T : PythonEditorWindow
+        {
+            PythonEditorWindow window = GetOrCreate<T>(windowTitle, windowID, pythonScriptPath, userData, scope, disposeScopeOnDestroy);
+            window.Show();
+            return (T)window;
+        }
+
+        /// <summary>
+        /// Get or create a PythonEditorWindow of specified ID and type.
+        /// This method does not automatically invoke the window's Show method, so you can decide how the window is shown (e.g., Normal, Utility, Modal, etc.).
+        /// </summary>
+        /// <exception cref="InvalidOperationException"></exception>
+        public static T GetOrCreate<T>(GUIContent windowTitle, string windowID, string pythonScriptPath,
             IDictionary<string, object> userData = null, PyModule scope = null, bool disposeScopeOnDestroy = false)
             where T : PythonEditorWindow
         {
@@ -40,7 +43,7 @@ namespace UnityEditor.Scripting.Python
 
             PythonEditorWindow window = GetWindowByID(windowID);
             if (!window)
-                window = CreateWindow<T>();
+                window = CreateInstance<T>();
             else if (!(window is T))
                 throw new InvalidOperationException($"Window ID '{windowID}' is already used by another window type '{window.GetType().FullName}'.");
 
