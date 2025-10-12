@@ -60,13 +60,10 @@ namespace UnityEditor.Scripting.Python
             if (!Directory.Exists(PythonScriptFolder))
                 return;
 
-            EditorUtility.OpenWithDefaultApp(PythonScriptFolder);
-            // Process.Start(new ProcessStartInfo("code", PythonScriptFolder)
-            // {
-            //     FileName = "code",
-            //     Arguments = PythonScriptFolder,
-            //     WindowStyle = ProcessWindowStyle.Hidden,
-            // });
+            if (_useVSCode)
+                OpenPythonScriptFolderInVSCode();
+            else
+                EditorUtility.OpenWithDefaultApp(PythonScriptFolder);
         }
 
         private void RefreshPythonScripts()

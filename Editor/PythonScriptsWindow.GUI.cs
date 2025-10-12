@@ -13,6 +13,8 @@ namespace UnityEditor.Scripting.Python
     // GUI
     partial class PythonScriptsWindow
     {
+        private ToolbarButton _useVSCodeButton;
+        private Image _vscodeImage;
         private ScriptTreeViewContainer _scriptTreeContainer;
         private ToolbarButton _executeScriptButton;
         private VisualElement _scriptOptionalButtonContainer;
@@ -45,6 +47,22 @@ namespace UnityEditor.Scripting.Python
             mainToolbar.Add(new ToolbarSpacer());
             ToolbarButton openScriptFolderButton = CreateToolbarButton("Open Script Folder", "open-script-folder-button", OpenPythonScriptFolder);
             mainToolbar.Add(openScriptFolderButton);
+
+            // open-script-folder-in-vscode-button
+            if (IsVSCodeAvailable())
+            {
+                _useVSCodeButton = CreateToolbarButton("", "use-vscode-button", ToggleUseVSCode);
+                _useVSCodeButton.style.width = 20;
+                _useVSCodeButton.style.borderLeftWidth = 0;
+                _vscodeImage = new Image
+                {
+                    name = "vscode-image",
+                    pickingMode = PickingMode.Ignore,
+                    scaleMode = ScaleMode.ScaleToFit,
+                };
+                _useVSCodeButton.Add(_vscodeImage);
+                mainToolbar.Add(_useVSCodeButton);
+            }
 
             // main-toolbar-placeholder
             mainToolbar.Add(new VisualElement
@@ -271,12 +289,35 @@ namespace UnityEditor.Scripting.Python
 
         private void InitGUIState()
         {
+            SetVSCodeButtonState(GetUseVSCode());
+
             if (_isFirstTimeCreateGUI)
                 _scriptTreeContainer.SelectScriptEditor();
             else
                 OnPythonScriptSelected(_scriptTreeContainer.SelectedScriptPath);
 
             _isFirstTimeCreateGUI = false;
+        }
+
+        private void SetVSCodeButtonState(bool useVSCode)
+        {
+            if (useVSCode)
+            {
+                _useVSCodeButton.tooltip = "Open the script folder in Visual Studio Code [currently enabled].";
+                _vscodeImage.image = Resources.Load<Texture2D>(Img_VSCodeActive);
+            }
+            else
+            {
+                _useVSCodeButton.tooltip = "Open the script folder in Visual Studio Code [currently disabled].";
+                _vscodeImage.image = Resources.Load<Texture2D>(Img_VSCodeInactive);
+            }
+        }
+
+        private void ToggleUseVSCode()
+        {
+            bool useVSCode = !GetUseVSCode();
+            SetUseVSCode(useVSCode);
+            SetVSCodeButtonState(useVSCode);
         }
 
 
