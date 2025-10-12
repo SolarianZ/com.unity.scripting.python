@@ -543,6 +543,7 @@ namespace UnityEditor.Scripting.Python
             /// <inheritdoc />
             protected override bool CanMultiSelect(TreeViewItem item) => false;
 
+            /*
             /// <inheritdoc />
             protected override void SelectionChanged(IList<int> selectedIds)
             {
@@ -551,13 +552,42 @@ namespace UnityEditor.Scripting.Python
                 if (selectedIds == null || selectedIds.Count == 0)
                 {
                     ScriptSelected?.Invoke(null);
+                    return;
                 }
-                else
-                {
-                    int scriptID = selectedIds[0];
-                    _id2Path.TryGetValue(scriptID, out string scriptPath);
-                    ScriptSelected?.Invoke(scriptPath);
-                }
+
+                int scriptID = selectedIds[0];
+                _id2Path.TryGetValue(scriptID, out string scriptPath);
+                ScriptSelected?.Invoke(scriptPath);
+            }
+            */
+
+            /// <inheritdoc />
+            protected override void SingleClickedItem(int id)
+            {
+                base.SingleClickedItem(id);
+                SelectScript(id);
+            }
+
+            /// <inheritdoc />
+            protected override void ContextClickedItem(int id)
+            {
+                base.ContextClickedItem(id);
+                SelectScript(id);
+
+                if (!_id2Path.TryGetValue(id, out string scriptPath) || string.IsNullOrEmpty(scriptPath))
+                    return;
+
+                GenericMenu menu = new GenericMenu();
+                if (PythonScriptsWindow.IsVSCodeAvailable())
+                    menu.AddItem(new GUIContent("Open in Visual Studio Code"), false, () => PythonScriptsWindow.OpenPythonScriptInVSCode(scriptPath));
+                menu.AddItem(new GUIContent("Show in Folder"), false, () => EditorUtility.RevealInFinder(scriptPath));
+                menu.ShowAsContext();
+            }
+
+            private void SelectScript(int id)
+            {
+                _id2Path.TryGetValue(id, out string scriptPath);
+                ScriptSelected?.Invoke(scriptPath);
             }
         }
     }
