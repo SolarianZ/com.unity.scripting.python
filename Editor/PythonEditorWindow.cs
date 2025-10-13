@@ -116,6 +116,7 @@ namespace UnityEditor.Scripting.Python
             // 编译后恢复
             if (WindowID != null && PythonScriptPath != null)
             {
+                // TODO FIXME: ObjectDisposedException PyModule
                 PythonBridge.ExecuteFile(PythonScriptPath, _scope);
                 PyInitHandler?.Invoke();
             }
