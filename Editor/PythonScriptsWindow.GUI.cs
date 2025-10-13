@@ -301,6 +301,9 @@ namespace UnityEditor.Scripting.Python
 
         private void SetVSCodeButtonState(bool useVSCode)
         {
+            if(!IsVSCodeAvailable())
+                return;
+            
             if (useVSCode)
             {
                 _useVSCodeButton.tooltip = "Open the script folder in Visual Studio Code [currently enabled].";
